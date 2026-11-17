@@ -22,9 +22,11 @@ public sealed class AppSettings
     /// <summary>사용자가 고른 저장 폴더 (자동 저장 · 저장 창의 처음 위치). 고르지 않았으면 빈 값</summary>
     public string SaveFolder { get; set; } = "";
 
+    [System.Text.Json.Serialization.JsonIgnore]
     public bool HasFolder => !string.IsNullOrWhiteSpace(SaveFolder);
 
     /// <summary>저장 창이 처음 여는 폴더</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
     public string DialogFolder => HasFolder && Directory.Exists(SaveFolder) ? SaveFolder : PicturesFolder;
 
     /// <summary>처음 실행할 때 "Windows 시작할 때 실행"을 켰는지 (한 번만)</summary>
