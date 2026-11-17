@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -8,30 +9,33 @@ using CaptureMode = Capture.Core.CaptureMode;
 namespace Capture;
 
 /// <summary>
-/// 단축키 바꾸기: 모드마다 칸 하나. 칸을 누르면 키를 기다리고(그동안 이 앱의 단축키는 모두 놓음), 누른 조합으로 바꿔 바로 등록.
+/// 설정: 단축키 · 저장 위치 · Windows 시작할 때 실행. 바꾸면 바로 적용 · 저장 (저장 단추 없음).
+/// 단축키: 모드마다 칸 하나. 칸을 누르면 키를 기다리고(그동안 이 앱의 단축키는 모두 놓음), 누른 조합으로 바꿔 바로 등록.
 /// 어떤 키든 됨 (글자 키처럼 글을 쓸 때 누르는 키는 알려 주기만). 다른 모드가 쓰던 키면 이쪽으로 옮김.
 /// 다른 프로그램이 쓰는 조합이면 알려 주고 그대로 둠
 /// </summary>
-public partial class HotkeyWindow : Window
+public partial class SettingsWindow : Window
 {
     private static readonly Brush Waiting = new SolidColorBrush(Color.FromRgb(0x3B, 0x82, 0xF6));
     private static readonly Brush Normal = new SolidColorBrush(Color.FromRgb(0x3A, 0x3B, 0x42));
     private readonly Hotkeys _hotkeys;
+    private readonly CaptureController _controller;
     private readonly Dictionary<CaptureMode, Button> _boxes = [];
     private CaptureMode? _waiting;
 
-    public HotkeyWindow(Hotkeys hotkeys, CaptureMode? start = null)
+    public SettingsWindow(Hotkeys hotkeys, CaptureController controller)
     {
         _hotkeys = hotkeys;
+        _controller = controller;
         InitializeComponent();
         foreach (var mode in Hotkeys.Modes)
         {
-            var row = new Grid { Margin = new Thickness(0, 0, 0, 10) };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(78) });
+            var row = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
             row.ColumnDefinitions.Add(new ColumnDefinition());
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.Children.Add(new TextBlock { Text = Hotkeys.Name(mode), FontSize = 13.5, VerticalAlignment = VerticalAlignment.Center });
-            var box = new Button { Style = (Style)FindResource("KeyBoxStyle"), Tag = mode };
+            var box = new Button { Style = (Style)FindResource("KeyBoxStyle"), Tag = mode, ToolTip = "눌러서 바꾸기" };
             box.Click += (_, _) => StartWaiting(mode);
             Grid.SetColumn(box, 1);
             row.Children.Add(box);
@@ -61,9 +65,11 @@ public partial class HotkeyWindow : Window
             _boxes[mode] = box;
         }
         ShowAll();
-        // 큰 창에서 그 모드의 단축키 글자를 눌러 열었으면 바로 키를 기다림
-        if (start is { } first) Loaded += (_, _) => StartWaiting(first);
+        ShowFolder();
+        StartupBox.IsChecked = StartWithWindows.IsEnabled;
     }
+
+    // ───────── 단축키 ─────────
 
     private void ShowAll()
     {
@@ -145,7 +151,7 @@ public partial class HotkeyWindow : Window
             _hotkeys.Set(mode, previous);
             ShowAll();
             Say(binding.Modifiers == 0 && binding.Key == Core.NativeMethods.VK_SNAPSHOT
-                ? "PrtSc 를 Windows 캡처 도구가 쓰고 있습니다. 설정 → 접근성 → 키보드에서 \"Print Screen 키로 화면 캡처 열기\"를 끄세요."
+                ? "PrtSc 를 Windows 캡처 도구가 쓰고 있습니다. Windows 설정 → 접근성 → 키보드에서 \"Print Screen 키로 화면 캡처 열기\"를 끄세요."
                 : $"{binding} 는 다른 프로그램이 쓰고 있어 쓸 수 없습니다.");
         }
     }
@@ -165,6 +171,36 @@ public partial class HotkeyWindow : Window
         ShowAll();
         if (_hotkeys.Failed.Count > 0) Say(string.Join(", ", _hotkeys.Failed.Select(Hotkeys.Name)) + " 단축키를 다른 프로그램이 쓰고 있습니다.");
     }
+
+    // ───────── 저장 위치 · 일반 ─────────
+
+    private void ShowFolder()
+    {
+        FolderText.Text = _controller.Settings.SaveFolder;
+        FolderText.ToolTip = _controller.Settings.SaveFolder;
+    }
+
+    private void ChangeFolder_Click(object sender, RoutedEventArgs e)
+    {
+        StopWaiting();
+        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "캡처를 저장할 폴더", InitialDirectory = _controller.Settings.SaveFolder };
+        if (dialog.ShowDialog(this) != true) return;
+        _controller.Settings.SaveFolder = dialog.FolderName;
+        _controller.Settings.Save();
+        ShowFolder();
+        _controller.NotifySaved();  // 큰 창의 최근 목록을 새 폴더로
+    }
+
+    private void OpenFolder_Click(object sender, RoutedEventArgs e) => ImageFiles.OpenFolder(_controller.Settings.SaveFolder);
+
+    private void StartupBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        try { StartWithWindows.Set(StartupBox.IsChecked == true); }
+        catch (Exception error) when (error is UnauthorizedAccessException or System.Security.SecurityException or IOException) { Toast.Error(error.Message); }
+    }
+
+    // ───────── 창 ─────────
 
     // 다른 창으로 가면 키 기다리기를 그만둠 (단축키가 계속 꺼져 있지 않게)
     private void Window_Deactivated(object? sender, EventArgs e) => StopWaiting();

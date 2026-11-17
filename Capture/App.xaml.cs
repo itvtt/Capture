@@ -92,7 +92,7 @@ public partial class App : Application
             if (_tray is not null) _tray.Text = _hotkeys!.Get(CaptureMode.Region).IsNone ? "Capture" : $"Capture ({_hotkeys.LabelFor(CaptureMode.Region)})";
         }
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("단축키 바꾸기…", null, (_, _) => _main!.OpenHotkeys());
+        menu.Items.Add("설정…", null, (_, _) => _main!.OpenSettings());
         menu.Items.Add("저장 폴더 열기", null, (_, _) => ImageFiles.OpenFolder(_controller!.Settings.SaveFolder));
         menu.Items.Add("창 열기", null, (_, _) => _main!.ShowFront());
         menu.Items.Add(new Forms.ToolStripSeparator());

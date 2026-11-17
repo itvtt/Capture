@@ -30,8 +30,6 @@ public partial class MainWindow : Window
         _hotkeys = hotkeys;
         InitializeComponent();
         VersionText.Text = "v" + Version;
-        StartupBox.IsChecked = StartWithWindows.IsEnabled;
-        ShowFolder();
         ShowHotkeyState();
         _hotkeys.Changed += ShowHotkeyState;
         _controller.FilesChanged += () => Dispatcher.BeginInvoke(LoadRecent);
@@ -155,32 +153,7 @@ public partial class MainWindow : Window
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e) => ImageFiles.OpenFolder(_controller.Settings.SaveFolder);
 
-    private void FolderText_Click(object sender, MouseButtonEventArgs e) => ImageFiles.OpenFolder(_controller.Settings.SaveFolder);
-
     // ───────── 설정 ─────────
-
-    private void ShowFolder()
-    {
-        FolderText.Text = _controller.Settings.SaveFolder;
-        FolderText.ToolTip = _controller.Settings.SaveFolder + " (누르면 열기)";
-    }
-
-    private void ChangeFolder_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "캡처를 저장할 폴더", InitialDirectory = _controller.Settings.SaveFolder };
-        if (dialog.ShowDialog(this) != true) return;
-        _controller.Settings.SaveFolder = dialog.FolderName;
-        _controller.Settings.Save();
-        ShowFolder();
-        LoadRecent();
-    }
-
-    private void StartupBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (!IsLoaded) return;
-        try { StartWithWindows.Set(StartupBox.IsChecked == true); }
-        catch (Exception error) when (error is UnauthorizedAccessException or System.Security.SecurityException or IOException) { Toast.Error(error.Message); }
-    }
 
     /// <summary>칸 아래 단축키 글자, 그리고 등록하지 못한 단축키 안내 (PrtSc 는 Windows 11 캡처 도구가 먼저 쓰는 경우가 많음)</summary>
     private void ShowHotkeyState()
@@ -197,26 +170,19 @@ public partial class MainWindow : Window
         }
         bool printScreen = failed.Any(mode => _hotkeys.Get(mode) == new HotkeyBinding(0, VK_SNAPSHOT));
         HotkeyWarningText.Text = printScreen
-            ? "PrtSc 를 Windows 캡처 도구가 쓰고 있습니다. 설정 → 접근성 → 키보드에서 \"Print Screen 키로 화면 캡처 열기\"를 끄거나 단축키를 바꾸세요."
-            : string.Join(", ", failed.Select(mode => _hotkeys.LabelFor(mode))) + " 를 다른 프로그램이 쓰고 있습니다. 단축키를 바꾸세요.";
+            ? "PrtSc 를 Windows 캡처 도구가 쓰고 있습니다. Windows 설정 → 접근성 → 키보드에서 \"Print Screen 키로 화면 캡처 열기\"를 끄거나, 설정에서 단축키를 바꾸세요."
+            : string.Join(", ", failed.Select(mode => _hotkeys.LabelFor(mode))) + " 를 다른 프로그램이 쓰고 있습니다. 설정에서 단축키를 바꾸세요.";
         WindowsSettingsButton.Visibility = printScreen ? Visibility.Visible : Visibility.Collapsed;
         HotkeyWarning.Visibility = Visibility.Visible;
     }
 
-    private void Hotkeys_Click(object sender, RoutedEventArgs e) => OpenHotkeys();
+    private void Settings_Click(object sender, RoutedEventArgs e) => OpenSettings();
 
-    // 칸 아래 단축키 글자: 칸(캡처 시작)이 눌리지 않게 하고 그 단축키를 바로 바꾸기
-    private void Key_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        e.Handled = true;
-        if ((sender as FrameworkElement)?.Tag is string tag && Enum.TryParse<CaptureMode>(tag, out var mode)) OpenHotkeys(mode);
-    }
-
-    /// <summary>단축키 바꾸기 창 (트레이 메뉴에서도). mode 를 주면 그 칸이 바로 키를 기다림</summary>
-    public void OpenHotkeys(CaptureMode? mode = null)
+    /// <summary>설정 창: 단축키 · 저장 위치 · 시작할 때 실행 (트레이 메뉴에서도)</summary>
+    public void OpenSettings()
     {
         if (!IsVisible) ShowFront();
-        new HotkeyWindow(_hotkeys, mode) { Owner = this }.ShowDialog();
+        new SettingsWindow(_hotkeys, _controller) { Owner = this }.ShowDialog();
     }
 
     private void KeyboardSettings_Click(object sender, RoutedEventArgs e)

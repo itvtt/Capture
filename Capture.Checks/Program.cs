@@ -26,7 +26,6 @@ static class Program
         if (args is ["--screen"]) return ScreenChecks.Run();
         if (args is ["--live", var output]) return ScreenChecks.Live(output);
         if (args is ["--e2e", var exe, var e2e]) return EndToEnd.Run(exe, e2e);
-        if (args is ["--real-keys", var realExe, var realFolder]) return EndToEnd.RealApp(realExe, realFolder);
         if (args is ["--hotkey-main", var mainFolder]) return EndToEnd.FromMainWindow(mainFolder);  // CAPTURE_DATA_DIR 을 따로 정해 두고
         if (args is ["--hotkey-dialog", var keyFolder]) return EndToEnd.HotkeyDialog(keyFolder);  // CAPTURE_DATA_DIR 을 따로 정해 두고
         if (args is ["--grab", var shot])

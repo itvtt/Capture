@@ -44,42 +44,6 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <!-- 제목 표시줄의 둥근 글자 단추 (단축키) -->
-        <Style x:Key="TitlePillStyle" TargetType="Button">
-            <Setter Property="Height" Value="30" />
-            <Setter Property="Padding" Value="12,0,14,0" />
-            <Setter Property="Background" Value="#FF2C2D32" />
-            <Setter Property="Foreground" Value="#FFF5F5F7" />
-            <Setter Property="FontSize" Value="12.5" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Face" Background="{TemplateBinding Background}" CornerRadius="15" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Face" Property="Background" Value="#FF3A3B42" /></Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <!-- 칸 아래 단축키: 누르면 그 단축키를 바로 바꿈 -->
-        <Style x:Key="KeyPillStyle" TargetType="Border">
-            <Setter Property="Margin" Value="0,6,0,0" />
-            <Setter Property="Padding" Value="8,2,8,3" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="CornerRadius" Value="6" />
-            <Setter Property="Background" Value="#FF303137" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="ToolTip" Value="눌러서 단축키 바꾸기" />
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#FF45464D" /></Trigger>
-            </Style.Triggers>
-        </Style>
         <!-- 최근 칸: 미리 보기 + 이름 -->
         <Style x:Key="RecentStyle" TargetType="Button">
             <Setter Property="Width" Value="140" />
@@ -132,7 +96,6 @@
             <RowDefinition Height="44" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="34" />
         </Grid.RowDefinitions>
 
         <!-- 제목 표시줄 -->
@@ -145,13 +108,8 @@
                     <TextBlock x:Name="VersionText" Margin="8,1,0,0" VerticalAlignment="Center" FontSize="11.5" Foreground="{StaticResource MutedTextBrush}" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- 단축키 바꾸기: 눈에 띄게 제목 표시줄에 -->
-                    <Button Margin="0,0,10,0" Style="{StaticResource TitlePillStyle}" Click="Hotkeys_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="캡처 단축키를 원하는 키로 바꾸기">
-                        <StackPanel Orientation="Horizontal">
-                            <Path Width="16" Height="11" Stretch="Uniform" VerticalAlignment="Center" Stroke="#FFD9DCE3" StrokeThickness="1.2" StrokeLineJoin="Round"
-                                  Data="M 0.5,0.5 L 15.5,0.5 15.5,10.5 0.5,10.5 Z M 3,3.5 L 4,3.5 M 6,3.5 L 7,3.5 M 9,3.5 L 10,3.5 M 12,3.5 L 13,3.5 M 4.5,7.5 L 11.5,7.5" />
-                            <TextBlock Margin="7,0,0,0" VerticalAlignment="Center" Text="단축키" />
-                        </StackPanel>
+                    <Button x:Name="SettingsButton" Style="{StaticResource ChromeButtonStyle}" Click="Settings_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="설정 (단축키 · 저장 위치 · 시작할 때 실행)">
+                        <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
                     </Button>
                     <Button Style="{StaticResource ChromeButtonStyle}" Click="Minimize_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="최소화">
                         <Path Width="12" Height="1" Data="M 0,0.5 L 12,0.5" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1" />
@@ -169,7 +127,7 @@
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1" Margin="19,18,19,0">
+        <Grid Grid.Row="1" Margin="19,18,19,12">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -184,7 +142,7 @@
                             <Path Width="20" Height="20" Stretch="Uniform" Data="{StaticResource RegionIcon}" Stroke="#FF7FB0FF" StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                         </Border>
                         <TextBlock Margin="0,9,0,0" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold" Text="영역" />
-                        <Border Style="{StaticResource KeyPillStyle}" Tag="Region" PreviewMouseLeftButtonDown="Key_PreviewMouseLeftButtonDown"><StackPanel Orientation="Horizontal"><TextBlock x:Name="RegionKey" FontSize="11.5" Foreground="#FFC7C7CC" /><Path Width="9" Height="9" Margin="6,0,0,0" VerticalAlignment="Center" Stretch="Uniform" Stroke="#FF8E8E96" StrokeThickness="1.1" StrokeLineJoin="Round" Data="{StaticResource PencilIcon}" /></StackPanel></Border>
+                        <TextBlock x:Name="RegionKey" Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11.5" Foreground="{StaticResource MutedTextBrush}" />
                     </StackPanel>
                 </Button>
                 <Button x:Name="ScrollTile" Style="{StaticResource TileStyle}" Click="Tile_Click" Tag="Scroll" ToolTip="스크롤하며 긴 화면 한 장으로">
@@ -193,7 +151,7 @@
                             <Path Width="20" Height="20" Stretch="Uniform" Data="{StaticResource ScrollIcon}" Stroke="#FF5FE08A" StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
                         </Border>
                         <TextBlock Margin="0,9,0,0" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold" Text="스크롤" />
-                        <Border Style="{StaticResource KeyPillStyle}" Tag="Scroll" PreviewMouseLeftButtonDown="Key_PreviewMouseLeftButtonDown"><StackPanel Orientation="Horizontal"><TextBlock x:Name="ScrollKey" FontSize="11.5" Foreground="#FFC7C7CC" /><Path Width="9" Height="9" Margin="6,0,0,0" VerticalAlignment="Center" Stretch="Uniform" Stroke="#FF8E8E96" StrokeThickness="1.1" StrokeLineJoin="Round" Data="{StaticResource PencilIcon}" /></StackPanel></Border>
+                        <TextBlock x:Name="ScrollKey" Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11.5" Foreground="{StaticResource MutedTextBrush}" />
                     </StackPanel>
                 </Button>
                 <Button x:Name="GifTile" Style="{StaticResource TileStyle}" Click="Tile_Click" Tag="Gif" ToolTip="움직이는 그림 (GIF) 녹화">
@@ -202,7 +160,7 @@
                             <Path Width="20" Height="20" Stretch="Uniform" Data="{StaticResource GifIcon}" Stroke="#FFFFB84D" StrokeThickness="1.6" StrokeLineJoin="Round" />
                         </Border>
                         <TextBlock Margin="0,9,0,0" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold" Text="GIF" />
-                        <Border Style="{StaticResource KeyPillStyle}" Tag="Gif" PreviewMouseLeftButtonDown="Key_PreviewMouseLeftButtonDown"><StackPanel Orientation="Horizontal"><TextBlock x:Name="GifKey" FontSize="11.5" Foreground="#FFC7C7CC" /><Path Width="9" Height="9" Margin="6,0,0,0" VerticalAlignment="Center" Stretch="Uniform" Stroke="#FF8E8E96" StrokeThickness="1.1" StrokeLineJoin="Round" Data="{StaticResource PencilIcon}" /></StackPanel></Border>
+                        <TextBlock x:Name="GifKey" Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11.5" Foreground="{StaticResource MutedTextBrush}" />
                     </StackPanel>
                 </Button>
                 <Button x:Name="VideoTile" Style="{StaticResource TileStyle}" Click="Tile_Click" Tag="Video" ToolTip="영상 (MP4) 녹화">
@@ -211,7 +169,7 @@
                             <Path Width="20" Height="20" Stretch="Uniform" Data="{StaticResource VideoIcon}" Stroke="#FFFF7A70" StrokeThickness="1.6" />
                         </Border>
                         <TextBlock Margin="0,9,0,0" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold" Text="영상" />
-                        <Border Style="{StaticResource KeyPillStyle}" Tag="Video" PreviewMouseLeftButtonDown="Key_PreviewMouseLeftButtonDown"><StackPanel Orientation="Horizontal"><TextBlock x:Name="VideoKey" FontSize="11.5" Foreground="#FFC7C7CC" /><Path Width="9" Height="9" Margin="6,0,0,0" VerticalAlignment="Center" Stretch="Uniform" Stroke="#FF8E8E96" StrokeThickness="1.1" StrokeLineJoin="Round" Data="{StaticResource PencilIcon}" /></StackPanel></Border>
+                        <TextBlock x:Name="VideoKey" Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11.5" Foreground="{StaticResource MutedTextBrush}" />
                     </StackPanel>
                 </Button>
             </UniformGrid>
@@ -233,23 +191,11 @@
         <!-- PrtSc 를 Windows 캡처 도구가 쓰고 있을 때 -->
         <Border x:Name="HotkeyWarning" Grid.Row="2" Margin="24,0,24,12" Padding="14,10" CornerRadius="10" Background="#1FFFC56B" BorderBrush="#40FFC56B" BorderThickness="1" Visibility="Collapsed">
             <DockPanel>
-                <Button DockPanel.Dock="Right" Margin="6,0,0,0" Style="{StaticResource PillButtonStyle}" Height="28" Click="Hotkeys_Click" Content="단축키 바꾸기" />
+                <Button DockPanel.Dock="Right" Margin="6,0,0,0" Style="{StaticResource PillButtonStyle}" Height="28" Click="Settings_Click" Content="설정" />
                 <Button x:Name="WindowsSettingsButton" DockPanel.Dock="Right" Margin="12,0,0,0" Style="{StaticResource PillButtonStyle}" Height="28" Click="KeyboardSettings_Click" Content="Windows 설정" />
                 <TextBlock x:Name="HotkeyWarningText" VerticalAlignment="Center" FontSize="12.5" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" />
             </DockPanel>
         </Border>
 
-        <!-- 아래: 저장 위치 · 시작할 때 실행 -->
-        <Border Grid.Row="3" Background="{StaticResource TitleBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0">
-            <DockPanel Margin="16,0">
-                <CheckBox x:Name="StartupBox" DockPanel.Dock="Right" FontSize="12" Content="Windows 시작할 때 실행" Checked="StartupBox_Changed" Unchecked="StartupBox_Changed" />
-                <Button DockPanel.Dock="Right" Margin="0,0,18,0" Style="{StaticResource LinkButtonStyle}" FontSize="12" Click="Hotkeys_Click" Content="단축키 바꾸기" />
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock FontSize="12" Foreground="{StaticResource MutedTextBrush}" Text="저장 위치" />
-                    <TextBlock x:Name="FolderText" Margin="8,0,0,0" MaxWidth="300" FontSize="12" TextTrimming="CharacterEllipsis" Cursor="Hand" MouseLeftButtonUp="FolderText_Click" ToolTip="폴더 열기" />
-                    <Button Margin="10,0,0,0" Style="{StaticResource LinkButtonStyle}" FontSize="12" Click="ChangeFolder_Click" Content="바꾸기" />
-                </StackPanel>
-            </DockPanel>
-        </Border>
     </Grid>
 </Window>
