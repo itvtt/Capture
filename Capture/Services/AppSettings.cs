@@ -13,16 +13,25 @@ public sealed class AppSettings
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Capture");
     private static string FilePath => Path.Combine(DataDirectory, "settings.json");
 
-    public static string DefaultFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Capture");
+    /// <summary>저장 창이 처음 여는 곳 (폴더를 아직 고르지 않았을 때): 사진</summary>
+    public static string PicturesFolder => Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
 
-    /// <summary>캡처 · 녹화를 저장하는 폴더</summary>
-    public string SaveFolder { get; set; } = DefaultFolder;
+    /// <summary>자동 저장: 켜면 캡처 · 녹화를 SaveFolder 에 바로 저장. 끄면(처음 값) 복사만 하고 사용자가 저장할 때 위치를 고름</summary>
+    public bool AutoSave { get; set; }
+
+    /// <summary>사용자가 고른 저장 폴더 (자동 저장 · 저장 창의 처음 위치). 고르지 않았으면 빈 값</summary>
+    public string SaveFolder { get; set; } = "";
+
+    public bool HasFolder => !string.IsNullOrWhiteSpace(SaveFolder);
+
+    /// <summary>저장 창이 처음 여는 폴더</summary>
+    public string DialogFolder => HasFolder && Directory.Exists(SaveFolder) ? SaveFolder : PicturesFolder;
 
     /// <summary>처음 실행할 때 "Windows 시작할 때 실행"을 켰는지 (한 번만)</summary>
     public bool StartupConfigured { get; set; }
 
-    /// <summary>처음 실행에 설정 창을 보여 단축키를 정하게 했는지 (한 번만)</summary>
-    public bool HotkeysChosen { get; set; }
+    /// <summary>처음 설정(단축키 · 저장 방식)을 보였는지 (한 번만)</summary>
+    public bool SetupDone { get; set; }
 
     /// <summary>정한 단축키 (모드 이름 → 단축키). 없으면 모두 없음</summary>
     public Dictionary<string, HotkeyBinding>? Hotkeys { get; set; }
@@ -36,7 +45,7 @@ public sealed class AppSettings
         {
             if (File.Exists(FilePath) && JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) is { } settings)
             {
-                if (string.IsNullOrWhiteSpace(settings.SaveFolder)) settings.SaveFolder = DefaultFolder;
+                if (settings.AutoSave && !settings.HasFolder) settings.AutoSave = false;  // 폴더 없이 자동 저장은 없음
                 return settings;
             }
         }
@@ -61,14 +70,35 @@ public sealed class AppSettings
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
     }
 
-    /// <summary>저장 폴더에 새 파일 이름: Capture_20261117_143012.png (같은 이름이 있으면 _2, _3 …)</summary>
-    public string NewFilePath(string extension)
+    /// <summary>새 파일 이름: Capture_20261117_143012</summary>
+    public static string NewName() => "Capture_" + DateTime.Now.ToString("yyyyMMdd_HHmmss");
+
+    /// <summary>저장 폴더의 새 파일 (같은 이름이 있으면 _2, _3 …)</summary>
+    public string NewFilePath(string extension) => UniquePath(SaveFolder, extension);
+
+    /// <summary>저장하지 않은 녹화 · 공유용 임시 파일 (%TEMP%\Capture, 시작할 때 이틀 지난 것은 지움)</summary>
+    public static string TempFilePath(string extension) => UniquePath(TempFolder, extension);
+
+    public static string TempFolder => Path.Combine(Path.GetTempPath(), "Capture");
+
+    private static string UniquePath(string folder, string extension)
     {
-        Directory.CreateDirectory(SaveFolder);
-        string stem = "Capture_" + DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        string path = Path.Combine(SaveFolder, stem + "." + extension);
-        for (int n = 2; File.Exists(path); n++) path = Path.Combine(SaveFolder, $"{stem}_{n}.{extension}");
+        Directory.CreateDirectory(folder);
+        string stem = NewName();
+        string path = Path.Combine(folder, stem + "." + extension);
+        for (int n = 2; File.Exists(path); n++) path = Path.Combine(folder, $"{stem}_{n}.{extension}");
         return path;
+    }
+
+    public static void CleanTemp()
+    {
+        try
+        {
+            if (!Directory.Exists(TempFolder)) return;
+            foreach (var file in new DirectoryInfo(TempFolder).EnumerateFiles())
+                if (file.LastWriteTime < DateTime.Now.AddDays(-2)) file.Delete();
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
     }
 }
 

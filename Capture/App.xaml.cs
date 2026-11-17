@@ -61,9 +61,10 @@ public partial class App : Application
         _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, ShowSignalName);
         _showWait = ThreadPool.RegisterWaitForSingleObject(_showSignal, (_, _) => Dispatcher.BeginInvoke(() => _main.ShowFront()), null, -1, executeOnlyOnce: false);
 
-        if (!settings.HotkeysChosen)
+        AppSettings.CleanTemp();
+        if (!settings.SetupDone)
         {
-            // 처음 실행: 큰 창과 설정을 열어 단축키를 정하게 함 (정하지 않으면 단축키 없음)
+            // 처음 실행(처음 설정): 큰 창과 설정을 열어 단축키 · 저장 방식을 정하게 함 (정하지 않으면 단축키 없음 · 자동 저장 안 함)
             _main.Show();
             Dispatcher.BeginInvoke(() => _main.OpenSettings(firstRun: true));
         }
@@ -99,7 +100,11 @@ public partial class App : Application
         }
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("설정…", null, (_, _) => _main!.OpenSettings());
-        menu.Items.Add("저장 폴더 열기", null, (_, _) => ImageFiles.OpenFolder(_controller!.Settings.SaveFolder));
+        menu.Items.Add("저장 폴더 열기", null, (_, _) =>
+        {
+            if (_controller!.Settings.HasFolder) ImageFiles.OpenFolder(_controller.Settings.SaveFolder);
+            else Toast.Notify("저장 폴더를 아직 고르지 않았습니다", "설정에서 자동 저장을 켜고 폴더를 고르세요.", seconds: 5);
+        });
         menu.Items.Add("창 열기", null, (_, _) => _main!.ShowFront());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("종료", null, (_, _) => Quit());

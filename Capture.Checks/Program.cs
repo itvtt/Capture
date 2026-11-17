@@ -30,6 +30,8 @@ static class Program
         if (args is ["--live", var output]) return ScreenChecks.Live(output);
         if (args is ["--e2e", var exe, var e2e]) return EndToEnd.Run(exe, e2e);
         if (args is ["--first-run", var firstExe, var firstFolder]) return EndToEnd.FirstRun(firstExe, firstFolder);
+        if (args is ["--manual-save", var manualExe, var manualFolder]) return EndToEnd.ManualSave(manualExe, manualFolder);
+        if (args is ["--auto-save-toggle", var toggleFolder]) return EndToEnd.AutoSaveToggle(toggleFolder);
         if (args is ["--hotkey-main", var mainFolder]) return EndToEnd.FromMainWindow(mainFolder);  // CAPTURE_DATA_DIR 을 따로 정해 두고
         if (args is ["--hotkey-dialog", var keyFolder]) return EndToEnd.HotkeyDialog(keyFolder);  // CAPTURE_DATA_DIR 을 따로 정해 두고
         if (args is ["--grab", var shot])
@@ -61,6 +63,7 @@ static class Program
             Check("Scroll stitch: nothing moved is reported as no change", ScrollNoChange);
             Check("MP4: H.264 file plays and is right side up", () => Mp4(root));
             Check("Settings: new file names never overwrite", () => FileNames(root));
+            Check("Settings: no auto-save and no folder until the user picks them; recent list keeps saved files only", () => SaveChoices(root));
             Check("Hotkeys: names, allowed keys, saved and read back", () => HotkeySettings(root));
             Check("Editor: the flattened picture keeps its size and the marks", () => EditorFlatten(root));
         }
@@ -350,6 +353,30 @@ static class Program
         Assert(Path.GetFileName(first).StartsWith("Capture_"), "name starts with Capture_");
     }
 
+    private static void SaveChoices(string root)
+    {
+        var fresh = new AppSettings();
+        Assert(!fresh.AutoSave && !fresh.HasFolder, "a new install neither saves nor has a folder");
+        Assert(fresh.DialogFolder == AppSettings.PicturesFolder, "save dialogs start in Pictures until a folder is picked");
+        string temp = AppSettings.TempFilePath("gif");
+        Assert(temp.StartsWith(AppSettings.TempFolder), "unsaved recordings go to the temp folder");
+
+        string folder = Path.Combine(root, "recent");
+        Directory.CreateDirectory(folder);
+        string a = Path.Combine(folder, "a.png"), b = Path.Combine(folder, "b.png");
+        File.WriteAllBytes(a, [1]);
+        File.WriteAllBytes(b, [1]);
+        RecentFiles.Add(a);
+        RecentFiles.Add(b);
+        RecentFiles.Add(a);
+        var all = RecentFiles.All();
+        Assert(all.Count >= 2 && all[0] == a && all[1] == b, "newest first, no duplicates");
+        File.Delete(b);
+        Assert(!RecentFiles.All().Contains(b), "deleted files are not listed");
+        RecentFiles.Remove(a);
+        Assert(!RecentFiles.All().Contains(a), "removed from the list");
+    }
+
     private static void HotkeySettings(string root)
     {
         // 처음에는 단축키가 하나도 없음 (다른 프로그램과 겹치지 않게)
@@ -389,7 +416,7 @@ static class Program
 
     private static void EditorFlatten(string root)
     {
-        var settings = new AppSettings { SaveFolder = Path.Combine(root, "editor") };
+        var settings = new AppSettings { SaveFolder = Path.Combine(root, "editor"), AutoSave = true };
         var picture = Solid(600, 400, (_, _) => (128, 128, 128)).ToBitmap();
         string path = settings.NewFilePath("png");
         ImageFiles.Save(picture, path);

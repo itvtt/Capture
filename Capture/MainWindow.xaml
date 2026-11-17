@@ -175,7 +175,7 @@
             </UniformGrid>
 
             <DockPanel Grid.Row="1" Margin="5,24,5,12">
-                <Button DockPanel.Dock="Right" Style="{StaticResource LinkButtonStyle}" Click="OpenFolder_Click" Content="폴더 열기" />
+                <Button x:Name="FolderLink" DockPanel.Dock="Right" Style="{StaticResource LinkButtonStyle}" Click="OpenFolder_Click" Content="저장 폴더 열기" />
                 <TextBlock FontSize="14" FontWeight="SemiBold" Text="최근" />
             </DockPanel>
 
@@ -185,7 +185,7 @@
                 </ItemsControl>
             </ScrollViewer>
             <TextBlock x:Name="EmptyText" Grid.Row="2" Margin="0,24,0,0" HorizontalAlignment="Center" VerticalAlignment="Top" FontSize="13" Foreground="{StaticResource MutedTextBrush}"
-                       Text="캡처하면 여기에 쌓입니다" Visibility="Collapsed" />
+                       Text="저장한 캡처가 여기에 보입니다" Visibility="Collapsed" />
         </Grid>
 
         <!-- PrtSc 를 Windows 캡처 도구가 쓰고 있을 때 -->

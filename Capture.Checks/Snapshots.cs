@@ -17,11 +17,12 @@ static class Snapshots
         var desktop = FakeDesktop(1280, 720);
 
         // 최근 목록에 보일 파일: 그림 셋, GIF 하나, 영상 하나
-        var settings = new AppSettings { SaveFolder = samples };
+        var settings = new AppSettings { SaveFolder = samples, AutoSave = true };
         for (int i = 0; i < 3; i++)
         {
             string png = settings.NewFilePath("png").Replace(".png", $"_{i}.png");
             ImageFiles.Save(new CroppedBitmap(desktop, new Int32Rect(i * 200, i * 80, 640, 400)), png);
+            RecentFiles.Add(png);
         }
         using (var gif = new GifWriter(Path.Combine(samples, "Capture_sample.gif"), 320, 200))
         {
@@ -29,6 +30,8 @@ static class Snapshots
             gif.Finish(1_000_000);
         }
         File.WriteAllBytes(Path.Combine(samples, "Capture_sample.mp4"), [0, 0, 0, 0]);
+        RecentFiles.Add(Path.Combine(samples, "Capture_sample.gif"));
+        RecentFiles.Add(Path.Combine(samples, "Capture_sample.mp4"));
 
         var controller = new CaptureController(settings);
         using var hotkeys = new Hotkeys(settings);
@@ -39,7 +42,7 @@ static class Snapshots
         Save((FrameworkElement)main.Content, Path.Combine(folder, "main.png"));
         main.ExitApp();
 
-        var keys = new SettingsWindow(hotkeys, controller, firstRun: true) { WindowStartupLocation = WindowStartupLocation.Manual, Left = -6000, Top = 0, ShowActivated = false };
+        var keys = new SettingsWindow(hotkeys, new CaptureController(new AppSettings()), firstRun: true) { WindowStartupLocation = WindowStartupLocation.Manual, Left = -6000, Top = 0, ShowActivated = false };
         keys.Show();
         Program.Pump(TimeSpan.FromMilliseconds(300), () => false);
         Save((FrameworkElement)keys.Content, Path.Combine(folder, "settings.png"));

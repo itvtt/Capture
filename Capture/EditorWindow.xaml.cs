@@ -17,7 +17,7 @@ namespace Capture;
 
 /// <summary>
 /// 캡처 편집: 사각형 · 화살표 · 펜 · 형광펜 · 글자 · 모자이크 · 자르기, 되돌리기. 복사 · File Shared 공유.
-/// 캡처는 이미 저장되어 있고, 고친 내용은 닫을 때(또는 Ctrl+S · 공유할 때) 같은 파일에 저장
+/// 자동 저장이면 캡처는 이미 저장되어 있고 고친 내용은 닫을 때 같은 파일에. 아니면 [저장](Ctrl+S)에서 위치를 고르고, 닫을 때 저장할지 물어봄
 /// </summary>
 public partial class EditorWindow : Window
 {
@@ -33,7 +33,7 @@ public partial class EditorWindow : Window
     private static int _lastSize = 1;
 
     private readonly CaptureController _controller;
-    private readonly string _path;
+    private string? _path;  // 없으면 아직 저장하지 않은 캡처
     private BitmapSource _base;
     private PixelFrame? _basePixels;
     private Tool _tool = Tool.Rect, _toolBeforeCrop = Tool.Rect;
@@ -49,15 +49,14 @@ public partial class EditorWindow : Window
     private bool _fitted = true;
     private readonly DispatcherTimer _statusTimer = new() { Interval = TimeSpan.FromSeconds(3) };
 
-    public EditorWindow(CaptureController controller, string path, BitmapSource image)
+    public EditorWindow(CaptureController controller, string? path, BitmapSource image)
     {
         _controller = controller;
         _path = path;
         _base = image;
         int size = _lastSize;  // 굵기 단추의 처음 값(보통)이 InitializeComponent 중에 덮어쓰지 않게
         InitializeComponent();
-        FileText.Text = System.IO.Path.GetFileName(path);
-        Title = FileText.Text + " - Capture";
+        ShowName();
         for (int i = 0; i < Palette.Length; i++)
         {
             var (color, name) = Palette[i];
@@ -574,16 +573,36 @@ public partial class EditorWindow : Window
 
     // ───────── 저장 · 복사 · 공유 ─────────
 
-    /// <summary>고친 내용을 캡처 파일에 저장 (고친 게 없으면 그대로)</summary>
+    /// <summary>자동 저장이면 닫을 때 · 공유할 때 말없이 저장, 아니면 사용자가 [저장]할 때만</summary>
+    private bool AutoSave => _controller.Settings.AutoSave;
+
+    /// <summary>저장할 것이 남았는지: 아직 파일이 없거나 고친 뒤 저장하지 않음</summary>
+    private bool Unsaved => _path is null || _dirty;
+
+    private void ShowName()
+    {
+        FileText.Text = _path is null ? "캡처 · 저장 안 됨" : System.IO.Path.GetFileName(_path);
+        Title = (_path is null ? "캡처 (저장 안 됨)" : System.IO.Path.GetFileName(_path)) + " - Capture";
+        ShowInFolderItem.IsEnabled = _path is not null;
+        DeleteItem.IsEnabled = _path is not null;
+    }
+
+    private void Save_Click(object sender, RoutedEventArgs e)
+    {
+        if (Save()) ShowStatus("저장했습니다");
+    }
+
+    /// <summary>저장: 파일이 있으면 그 파일에, 없으면 저장할 곳을 물어봄. 취소하거나 실패하면 false</summary>
     private bool Save()
     {
         CommitText();
+        if (_path is null) return SaveAs();
         if (!_dirty) return true;
         try
         {
             ImageFiles.Save(Flatten(), _path);
             MarkDirty(false);
-            _controller.NotifySaved();
+            _controller.NotifySaved(_path);
             return true;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
@@ -602,10 +621,27 @@ public partial class EditorWindow : Window
 
     private async void Share_Click(object sender, RoutedEventArgs e)
     {
-        if (!Save()) return;
+        // 자동 저장이면 저장한 파일을, 아니면 지금 그림을 임시 파일로 만들어 올림 (저장은 하지 않음)
+        string target;
+        if (AutoSave && _path is not null)
+        {
+            if (!Save()) return;
+            target = _path;
+        }
+        else if (!Unsaved) target = _path!;
+        else
+        {
+            target = AppSettings.TempFilePath("png");
+            try { ImageFiles.Save(Flatten(), target); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            {
+                Toast.Error("공유할 파일을 만들지 못했습니다: " + error.Message);
+                return;
+            }
+        }
         ShareButton.IsEnabled = false;
         ShareText.Text = "올리는 중…";
-        try { await _controller.ShareAsync(_path); }
+        try { await _controller.ShareAsync(target); }
         finally
         {
             ShareButton.IsEnabled = true;
@@ -623,39 +659,50 @@ public partial class EditorWindow : Window
 
     private void SaveAs_Click(object sender, RoutedEventArgs e) => SaveAs();
 
-    private void SaveAs()
+    /// <summary>저장할 곳을 골라 저장. 아직 파일이 없던 캡처면 그 파일이 이 캡처의 파일이 됨</summary>
+    private bool SaveAs()
     {
+        CommitText();
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
-            FileName = System.IO.Path.GetFileNameWithoutExtension(_path),
-            InitialDirectory = System.IO.Path.GetDirectoryName(_path),
+            Title = "캡처 저장",
+            FileName = _path is null ? AppSettings.NewName() : System.IO.Path.GetFileNameWithoutExtension(_path),
+            InitialDirectory = _path is null ? _controller.Settings.DialogFolder : System.IO.Path.GetDirectoryName(_path),
             Filter = "PNG 그림 (*.png)|*.png|JPEG 그림 (*.jpg)|*.jpg",
             DefaultExt = ".png"
         };
-        if (dialog.ShowDialog(this) != true) return;
+        if (dialog.ShowDialog(this) != true) return false;
         try
         {
             ImageFiles.Save(Flatten(), dialog.FileName);
+            if (_path is null)
+            {
+                _path = dialog.FileName;
+                MarkDirty(false);
+                ShowName();
+            }
             ShowStatus("저장했습니다: " + System.IO.Path.GetFileName(dialog.FileName));
-            _controller.NotifySaved();
+            _controller.NotifySaved(dialog.FileName);
+            return true;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
             Toast.Error("저장하지 못했습니다: " + error.Message);
+            return false;
         }
     }
 
     private void ShowInFolder_Click(object sender, RoutedEventArgs e)
     {
-        Save();
-        ImageFiles.ShowInFolder(_path);
+        if (_path is not null) ImageFiles.ShowInFolder(_path);
     }
 
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
+        if (_path is not { } path) return;
         _deleted = true;
         Close();
-        _controller.Delete(_path);
+        _controller.Delete(path);
     }
 
     // ───────── 창 ─────────
@@ -709,8 +756,18 @@ public partial class EditorWindow : Window
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
         if (_deleted) return;
-        // 고친 내용은 저장하고 닫음 (저장하지 못하면 닫지 않음: 다른 이름으로 저장할 수 있게)
-        if (!Save()) e.Cancel = true;
+        CommitText();
+        if (!Unsaved) return;
+        // 자동 저장: 고친 내용을 말없이 저장 (저장하지 못하면 닫지 않음: 다른 이름으로 저장할 수 있게)
+        if (AutoSave && _path is not null)
+        {
+            if (!Save()) e.Cancel = true;
+            return;
+        }
+        // 직접 저장: 물어봄
+        var answer = MessageBox.Show(this, _path is null ? "이 캡처를 저장할까요?\n\n[아니요]를 누르면 저장하지 않고 닫습니다." : "고친 내용을 저장할까요?",
+            "Capture", MessageBoxButton.YesNoCancel, MessageBoxImage.Question, MessageBoxResult.Yes);
+        if (answer == MessageBoxResult.Cancel || (answer == MessageBoxResult.Yes && !Save())) e.Cancel = true;
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;

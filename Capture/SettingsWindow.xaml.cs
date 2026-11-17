@@ -9,8 +9,8 @@ using CaptureMode = Capture.Core.CaptureMode;
 namespace Capture;
 
 /// <summary>
-/// 설정: 단축키 · 저장 위치 · Windows 시작할 때 실행. 바꾸면 바로 적용 · 저장 (저장 단추 없음).
-/// 단축키는 처음에 하나도 없음. 처음 실행하면 이 창이 안내와 함께 열려 사용자가 정함
+/// 설정: 단축키 · 저장(자동 저장 · 폴더) · Windows 시작할 때 실행. 바꾸면 바로 적용 · 저장 (저장 단추 없음).
+/// 단축키는 처음에 하나도 없고 자동 저장도 꺼져 있음. 처음 실행하면 이 창이 안내와 함께 열려 사용자가 정함 (처음 설정)
 /// 단축키: 모드마다 칸 하나. 칸을 누르면 키를 기다리고(그동안 이 앱의 단축키는 모두 놓음), 누른 조합으로 바꿔 바로 등록.
 /// 어떤 키든 됨 (글자 키처럼 글을 쓸 때 누르는 키는 알려 주기만). 다른 모드가 쓰던 키면 이쪽으로 옮김.
 /// 다른 프로그램이 쓰는 조합이면 알려 주고 그대로 둠
@@ -66,9 +66,16 @@ public partial class SettingsWindow : Window
             _boxes[mode] = box;
         }
         ShowAll();
-        ShowFolder();
+        AutoSaveBox.IsChecked = _controller.Settings.AutoSave;
+        ShowSave();
         StartupBox.IsChecked = StartWithWindows.IsEnabled;
         Intro.Visibility = firstRun ? Visibility.Visible : Visibility.Collapsed;
+        if (firstRun)
+        {
+            Title = "처음 설정 - Capture";
+            Heading.Text = "처음 설정";
+            DoneButton.Content = "완료";
+        }
     }
 
     // ───────── 단축키 ─────────
@@ -173,26 +180,54 @@ public partial class SettingsWindow : Window
         ShowAll();
     }
 
-    // ───────── 저장 위치 · 일반 ─────────
+    // ───────── 저장 · 일반 ─────────
 
-    private void ShowFolder()
+    private void ShowSave()
     {
+        bool on = _controller.Settings.AutoSave;
+        FolderRow.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        ManualHint.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
         FolderText.Text = _controller.Settings.SaveFolder;
         FolderText.ToolTip = _controller.Settings.SaveFolder;
+    }
+
+    // 자동 저장을 켜면 폴더부터 고름 (고르지 않으면 다시 꺼짐)
+    private void AutoSaveBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        StopWaiting();
+        bool on = AutoSaveBox.IsChecked == true;
+        if (on && !_controller.Settings.HasFolder && !ChooseFolder())
+        {
+            AutoSaveBox.IsChecked = false;
+            return;
+        }
+        _controller.Settings.AutoSave = on;
+        _controller.Settings.Save();
+        ShowSave();
+        _controller.NotifySaved();
     }
 
     private void ChangeFolder_Click(object sender, RoutedEventArgs e)
     {
         StopWaiting();
-        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "캡처를 저장할 폴더", InitialDirectory = _controller.Settings.SaveFolder };
-        if (dialog.ShowDialog(this) != true) return;
-        _controller.Settings.SaveFolder = dialog.FolderName;
-        _controller.Settings.Save();
-        ShowFolder();
-        _controller.NotifySaved();  // 큰 창의 최근 목록을 새 폴더로
+        if (ChooseFolder()) ShowSave();
     }
 
-    private void OpenFolder_Click(object sender, RoutedEventArgs e) => ImageFiles.OpenFolder(_controller.Settings.SaveFolder);
+    /// <summary>저장할 폴더를 고름. 고르면 바로 저장</summary>
+    private bool ChooseFolder()
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "캡처를 저장할 폴더", InitialDirectory = _controller.Settings.DialogFolder };
+        if (dialog.ShowDialog(this) != true) return false;
+        _controller.Settings.SaveFolder = dialog.FolderName;
+        _controller.Settings.Save();
+        return true;
+    }
+
+    private void OpenFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (_controller.Settings.HasFolder) ImageFiles.OpenFolder(_controller.Settings.SaveFolder);
+    }
 
     private void StartupBox_Changed(object sender, RoutedEventArgs e)
     {
@@ -209,10 +244,10 @@ public partial class SettingsWindow : Window
     private void Window_Closed(object? sender, EventArgs e)
     {
         StopWaiting();
-        // 한 번 보았으면 다음부터 처음 안내 없이 (정하지 않은 단축키는 없음 그대로)
-        if (!_controller.Settings.HotkeysChosen)
+        // 한 번 보았으면 다음부터 처음 설정 없이 (정하지 않은 단축키는 없음, 자동 저장은 고른 대로)
+        if (!_controller.Settings.SetupDone)
         {
-            _controller.Settings.HotkeysChosen = true;
+            _controller.Settings.SetupDone = true;
             _controller.Settings.Save();
         }
     }

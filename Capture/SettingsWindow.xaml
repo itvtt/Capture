@@ -59,7 +59,7 @@
             <Grid Height="44" Background="{StaticResource TitleBrush}">
                 <StackPanel Margin="18,0,0,0" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="14" VerticalAlignment="Center" Foreground="#FFD9DCE3" />
-                    <TextBlock Margin="9,0,0,0" VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold" Text="설정" />
+                    <TextBlock x:Name="Heading" Margin="9,0,0,0" VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold" Text="설정" />
                 </StackPanel>
                 <Button HorizontalAlignment="Right" Margin="0,0,5,0" Style="{StaticResource CloseChromeButtonStyle}" Click="Close_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="닫기 (Esc)">
                     <Path Width="12" Height="12" Data="M 1,1 L 11,11 M 11,1 L 1,11" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.2" />
@@ -67,12 +67,12 @@
             </Grid>
 
             <StackPanel Margin="22,18,22,20">
-                <!-- 처음 실행: 단축키를 정하라는 안내 -->
+                <!-- 처음 설정: 단축키와 저장 방식을 정하라는 안내 -->
                 <Border x:Name="Intro" Margin="0,0,0,18" Padding="14,11" CornerRadius="10" Background="#1F3B82F6" BorderBrush="#663B82F6" BorderThickness="1" Visibility="Collapsed">
                     <TextBlock FontSize="13" TextWrapping="Wrap" LineHeight="20" Foreground="#FFDCE8FF">
-                        <Run FontWeight="SemiBold" Text="쓸 단축키를 정하세요." /><LineBreak />
-                        <Run Text="처음에는 단축키가 없어 다른 프로그램과 겹치지 않습니다." /><LineBreak />
-                        <Run Text="정하지 않은 캡처는 큰 창이나 트레이 메뉴에서 시작합니다." />
+                        <Run FontWeight="SemiBold" Text="처음 설정: 단축키와 저장 방식을 정하세요." /><LineBreak />
+                        <Run Text="단축키는 정한 것만 씁니다 (다른 프로그램과 겹치지 않게)." /><LineBreak />
+                        <Run Text="자동 저장을 켜면 폴더를 고르고, 끄면 캡처는 복사만 됩니다." />
                     </TextBlock>
                 </Border>
                 <!-- 단축키 -->
@@ -89,14 +89,22 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 저장 위치 -->
-                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="저장 위치" />
+                <!-- 저장: 자동 저장(켜면 폴더) -->
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="저장" />
                 <Border Style="{StaticResource SectionStyle}">
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right" Margin="6,0,0,0" Style="{StaticResource PillButtonStyle}" Height="30" Click="OpenFolder_Click" Content="열기" />
-                        <Button DockPanel.Dock="Right" Margin="12,0,0,0" Style="{StaticResource PillButtonStyle}" Height="30" Click="ChangeFolder_Click" Content="바꾸기" />
-                        <TextBlock x:Name="FolderText" VerticalAlignment="Center" FontSize="12.5" TextTrimming="CharacterEllipsis" />
-                    </DockPanel>
+                    <StackPanel>
+                        <CheckBox x:Name="AutoSaveBox" FontSize="13" Content="캡처 · 녹화를 자동으로 저장" Checked="AutoSaveBox_Changed" Unchecked="AutoSaveBox_Changed" />
+                        <TextBlock x:Name="ManualHint" Margin="24,4,0,0" FontSize="12" LineHeight="18" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap">
+                            <Run Text="꺼 두면 캡처는 복사만 됩니다." /><LineBreak />
+                            <Run Text="편집 창이나 녹화 알림의 [저장]에서 위치를 골라 저장합니다." />
+                        </TextBlock>
+                        <DockPanel x:Name="FolderRow" Margin="24,10,0,0">
+                            <Button DockPanel.Dock="Right" Margin="6,0,0,0" Style="{StaticResource PillButtonStyle}" Height="30" Click="OpenFolder_Click" Content="열기" />
+                            <Button DockPanel.Dock="Right" Margin="12,0,0,0" Style="{StaticResource PillButtonStyle}" Height="30" Click="ChangeFolder_Click" Content="바꾸기" />
+                            <TextBlock DockPanel.Dock="Left" Margin="0,0,10,0" VerticalAlignment="Center" FontSize="12.5" Foreground="{StaticResource MutedTextBrush}" Text="저장할 폴더" />
+                            <TextBlock x:Name="FolderText" VerticalAlignment="Center" FontSize="12.5" TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
+                    </StackPanel>
                 </Border>
 
                 <!-- 일반 -->
@@ -109,7 +117,7 @@
                     </StackPanel>
                 </Border>
 
-                <Button Margin="0,20,0,0" HorizontalAlignment="Right" Style="{StaticResource PrimaryPillButtonStyle}" Click="Close_Click" Content="닫기" />
+                <Button x:Name="DoneButton" Margin="0,20,0,0" HorizontalAlignment="Right" Style="{StaticResource PrimaryPillButtonStyle}" Click="Close_Click" Content="닫기" />
             </StackPanel>
         </StackPanel>
     </Border>

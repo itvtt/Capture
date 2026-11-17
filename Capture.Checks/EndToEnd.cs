@@ -55,7 +55,7 @@ static class EndToEnd
             ["Gif"] = new { Modifiers = 4, Key = 0x2C },
             ["Video"] = new { Modifiers = 6, Key = 0x2C },
         };
-        File.WriteAllText(Path.Combine(data, "settings.json"), JsonSerializer.Serialize(new { SaveFolder = saves, StartupConfigured = true, TrayHintShown = true, HotkeysChosen = true, Hotkeys = shortcuts }));
+        File.WriteAllText(Path.Combine(data, "settings.json"), JsonSerializer.Serialize(new { SaveFolder = saves, StartupConfigured = true, TrayHintShown = true, SetupDone = true, AutoSave = true, Hotkeys = shortcuts }));
 
         var start = new ProcessStartInfo(exe, "--tray") { UseShellExecute = false };
         start.Environment["CAPTURE_DATA_DIR"] = data;
@@ -250,6 +250,138 @@ static class EndToEnd
         return text.ToString();
     }
 
+    /// <summary>
+    /// 자동 저장을 끈 채로: PrtSc → 끌기 → 저장 안 된 편집 창(파일 없음) → Ctrl+S → 저장 창에서 Enter → 파일 · 최근 목록,
+    /// 다시 찍고 Esc → "저장할까요?" → 아니요 → 파일 없음, Shift+PrtSc GIF → 임시 파일 + "녹화했습니다" 알림 (저장 폴더에는 없음)
+    /// </summary>
+    public static int ManualSave(string exe, string folder)
+    {
+        string data = Path.Combine(folder, "data"), saves = Path.Combine(folder, "saves");
+        if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        Directory.CreateDirectory(data);
+        Directory.CreateDirectory(saves);
+        var shortcuts = new Dictionary<string, object> { ["Region"] = new { Modifiers = 0, Key = 0x2C }, ["Gif"] = new { Modifiers = 4, Key = 0x2C } };
+        File.WriteAllText(Path.Combine(data, "settings.json"), JsonSerializer.Serialize(new { SaveFolder = saves, AutoSave = false, StartupConfigured = true, TrayHintShown = true, SetupDone = true, Hotkeys = shortcuts }));
+        var start = new ProcessStartInfo(exe, "--tray") { UseShellExecute = false };
+        start.Environment["CAPTURE_DATA_DIR"] = data;
+        var began = DateTime.Now;
+        using var app = Process.Start(start)!;
+        int failures = 0;
+        void Expect(bool ok, string what)
+        {
+            Console.WriteLine((ok ? "  ok   " : "  FAIL ") + what);
+            if (!ok) failures++;
+        }
+        try
+        {
+            Thread.Sleep(2500);
+            Keys(VkSnapshot);
+            Thread.Sleep(1200);
+            Drag(300, 300, 640, 560);
+            Thread.Sleep(2000);
+            Expect(Directory.GetFiles(saves).Length == 0, "nothing saved after capturing");
+            Expect(FindWindow(null, "캡처 (저장 안 됨) - Capture") != IntPtr.Zero, "editor shows the capture as not saved");
+            Expect(System.Windows.Clipboard.ContainsImage(), "the capture is on the clipboard");
+
+            Keys(VkControl, 0x53);  // Ctrl+S
+            Thread.Sleep(1500);
+            Expect(FindWindow(null, "캡처 저장") != IntPtr.Zero, "Ctrl+S asks where to save");
+            Keys(VkReturn);
+            Thread.Sleep(1500);
+            var png = Directory.GetFiles(saves, "*.png");
+            Expect(png.Length == 1, "saved where the dialog started (the chosen folder): " + string.Join(", ", png.Select(Path.GetFileName)));
+            string recent = File.Exists(Path.Combine(data, "recent.json")) ? File.ReadAllText(Path.Combine(data, "recent.json")) : "";
+            Expect(png.Length == 1 && recent.Contains(Path.GetFileName(png[0])), "the saved file is in the recent list");
+            Keys(VkEscape);
+            Thread.Sleep(800);
+            Expect(FindWindow("#32770", "Capture") == IntPtr.Zero && png.Length == 1 && FindWindow(null, Path.GetFileName(png[0]) + " - Capture") == IntPtr.Zero,
+                "a saved capture closes without asking");
+
+            Keys(VkSnapshot);
+            Thread.Sleep(1200);
+            Drag(320, 320, 600, 520);
+            Thread.Sleep(2000);
+            Keys(VkEscape);
+            Thread.Sleep(1000);
+            Expect(FindWindow("#32770", "Capture") != IntPtr.Zero, "closing an unsaved capture asks to save");
+            Keys(0x4E);  // N = 아니요
+            Thread.Sleep(800);
+            Expect(FindWindow(null, "캡처 (저장 안 됨) - Capture") == IntPtr.Zero && Directory.GetFiles(saves, "*.png").Length == 1, "아니요 closes without saving");
+
+            Keys(VkShift, VkSnapshot);
+            Thread.Sleep(1200);
+            Keys(VkReturn);
+            Thread.Sleep(2000);
+            Keys(VkShift, VkSnapshot);
+            Thread.Sleep(5000);
+            Expect(Directory.GetFiles(saves, "*.gif").Length == 0, "the GIF is not saved by itself");
+            var temp = Directory.Exists(Capture.Services.AppSettings.TempFolder)
+                ? new DirectoryInfo(Capture.Services.AppSettings.TempFolder).GetFiles("*.gif").Where(f => f.LastWriteTime >= began).ToList() : [];
+            Expect(temp.Count == 1, "the GIF waits in the temp folder");
+            Expect(FindWindow(null, "Capture 알림") != IntPtr.Zero, "an alert offers to save it");
+        }
+        finally
+        {
+            if (!app.HasExited) app.Kill();
+        }
+        return failures == 0 ? 0 : 1;
+    }
+
+    /// <summary>설정의 자동 저장: 켜면 폴더 고르기가 뜨고, 취소하면 다시 꺼지고, 폴더를 고르면 켜진 채 그 폴더</summary>
+    public static int AutoSaveToggle(string folder)
+    {
+        string target = Path.Combine(folder, "picked");
+        if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        Directory.CreateDirectory(target);
+        var settings = new Capture.Services.AppSettings();
+        using var hotkeys = new Capture.Services.Hotkeys(settings);
+        var dialog = new Capture.SettingsWindow(hotkeys, new Capture.CaptureController(settings), firstRun: true) { WindowStartupLocation = System.Windows.WindowStartupLocation.CenterScreen };
+        dialog.Show();
+        dialog.Activate();
+        Program.Pump(TimeSpan.FromMilliseconds(600), () => false);
+        var box = dialog.AutoSaveBox;
+        var point = box.PointToScreen(new System.Windows.Point(9, box.ActualHeight / 2));
+        string log = "";
+        var driver = Task.Run(() =>
+        {
+            Click((int)point.X, (int)point.Y);
+            Thread.Sleep(1500);
+            log += "picker shown: " + (FindWindow(null, "캡처를 저장할 폴더") != IntPtr.Zero) + "; ";
+            Keys(VkEscape);
+            Thread.Sleep(800);
+            log += "after cancel on: " + dialog.Dispatcher.Invoke(() => settings.AutoSave) + "; ";
+            Click((int)point.X, (int)point.Y);
+            Thread.Sleep(1500);
+            Type(target);
+            for (int i = 0; i < 3 && FindWindow(null, "캡처를 저장할 폴더") != IntPtr.Zero; i++)
+            {
+                Keys(VkReturn);
+                Thread.Sleep(900);
+            }
+        });
+        Program.Pump(TimeSpan.FromSeconds(20), () => driver.IsCompleted);
+        Console.WriteLine(log);
+        Console.WriteLine($"auto-save {settings.AutoSave} · folder {settings.SaveFolder} · folder row {dialog.FolderRow.Visibility}");
+        bool ok = log.Contains("picker shown: True") && log.Contains("after cancel on: False")
+            && settings.AutoSave && string.Equals(settings.SaveFolder.TrimEnd('\\'), target, StringComparison.OrdinalIgnoreCase)
+            && dialog.FolderRow.Visibility == System.Windows.Visibility.Visible;
+        dialog.Close();
+        Console.WriteLine(ok ? "auto-save toggle: ok" : "auto-save toggle: FAIL");
+        return ok ? 0 : 1;
+    }
+
+    /// <summary>글자를 그대로 입력 (유니코드)</summary>
+    private static void Type(string text)
+    {
+        var inputs = new List<Input>();
+        foreach (char c in text)
+        {
+            inputs.Add(new Input { Type = 1, Key = new KeyInput { Scan = c, Flags = 0x0004 } });
+            inputs.Add(new Input { Type = 1, Key = new KeyInput { Scan = c, Flags = 0x0004 | 0x0002 } });
+        }
+        SendInput((uint)inputs.Count, [.. inputs], Marshal.SizeOf<Input>());
+    }
+
     /// <summary>처음 실행: 설정이 비어 있으면 큰 창과 설정 창(안내)이 열리고, 그냥 닫으면 단축키 없이 다시 묻지 않음</summary>
     public static int FirstRun(string exe, string folder)
     {
@@ -270,14 +402,15 @@ static class EndToEnd
             try
             {
                 Thread.Sleep(3000);
-                bool settings = FindWindow(null, "설정 - Capture") != IntPtr.Zero;
+                bool settings = FindWindow(null, "처음 설정 - Capture") != IntPtr.Zero;
                 if (run == 1)
                 {
                     Expect(settings && FindWindow(null, "Capture") != IntPtr.Zero, "first run opens the main window and 설정 (even with --tray)");
                     Keys(VkEscape);  // 정하지 않고 닫기
                     Thread.Sleep(800);
                     string saved = File.ReadAllText(Path.Combine(data, "settings.json"));
-                    Expect(saved.Contains("\"HotkeysChosen\": true"), "closing 설정 remembers it was shown");
+                    Expect(saved.Contains("\"SetupDone\": true"), "closing 처음 설정 remembers it was shown");
+                    Expect(saved.Contains("\"AutoSave\": false"), "auto-save stays off unless chosen");
                     Expect(!saved.Contains("\"Key\": 44"), "no shortcut was set");
                 }
                 else Expect(!settings, "second run does not ask again");

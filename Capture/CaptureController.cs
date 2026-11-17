@@ -26,7 +26,12 @@ public sealed class CaptureController(AppSettings settings)
     /// <summary>새 파일을 저장했거나 지움 (최근 목록을 다시 읽게)</summary>
     public event Action? FilesChanged;
 
-    public void NotifySaved() => FilesChanged?.Invoke();
+    /// <summary>저장한 파일을 최근 목록에 (자동 저장 · 편집 창 저장 · 녹화 저장)</summary>
+    public void NotifySaved(string? path = null)
+    {
+        if (path is not null) RecentFiles.Add(path);
+        FilesChanged?.Invoke();
+    }
 
     /// <summary>단축키 · 트레이 · 큰 창에서. 녹화 중이면 멈춤</summary>
     public async void Start(CaptureMode mode)
@@ -86,16 +91,22 @@ public sealed class CaptureController(AppSettings settings)
 
     // ───────── 그림 ─────────
 
+    /// <summary>찍은 그림: 복사하고 편집 창. 자동 저장이 켜져 있으면 그 폴더에 먼저 저장 (아니면 편집 창에서 사용자가 저장)</summary>
     private async Task SaveImageAsync(BitmapSource image)
     {
-        string path = Settings.NewFilePath("png");
-        await Task.Run(() => ImageFiles.Save(image, path));
+        string? path = null;
+        if (Settings.AutoSave && Settings.HasFolder)
+        {
+            path = Settings.NewFilePath("png");
+            await Task.Run(() => ImageFiles.Save(image, path));
+            NotifySaved(path);
+        }
         Copier.Image(image);
-        FilesChanged?.Invoke();
         OpenEditor(path, image);
     }
 
-    public void OpenEditor(string path, BitmapSource? image = null)
+    /// <summary>편집 창. path 가 없으면 저장하지 않은 캡처</summary>
+    public void OpenEditor(string? path, BitmapSource? image = null)
     {
         try
         {
@@ -151,7 +162,9 @@ public sealed class CaptureController(AppSettings settings)
             Toast.Error("녹화할 영역이 너무 작습니다.");
             return;
         }
-        string path = Settings.NewFilePath(gif ? "gif" : "mp4");
+        // 자동 저장이면 저장 폴더에, 아니면 임시 파일에 녹화하고 끝난 뒤 사용자가 저장
+        bool autoSave = Settings.AutoSave && Settings.HasFolder;
+        string path = autoSave ? Settings.NewFilePath(gif ? "gif" : "mp4") : AppSettings.TempFilePath(gif ? "gif" : "mp4");
         var recorder = new Recorder(rect, gif ? 15 : 30, () => gif
             ? new GifWriter(path, rect.Width, rect.Height)
             : new Mp4Writer(path, rect.Width, rect.Height, 30));
@@ -213,25 +226,55 @@ public sealed class CaptureController(AppSettings settings)
             Toast.Error("녹화하지 못했습니다: " + failure.Message);
             return;
         }
-        FilesChanged?.Invoke();
-        ShowRecorded(path, recorder.Elapsed);
+        if (autoSave) NotifySaved(path);
+        ShowRecorded(path, recorder.Elapsed, saved: autoSave);
     }
 
-    private void ShowRecorded(string path, TimeSpan length)
+    private void ShowRecorded(string path, TimeSpan length, bool saved)
     {
         bool gif = ImageFiles.IsGif(path);
         long size = new FileInfo(path).Length;
-        string detail = $"{Path.GetFileName(path)} · {ImageFiles.SizeText(size)} · {length:m\\:ss}";
-        Toast.Notify(gif ? "GIF 를 저장했습니다" : "영상을 저장했습니다", detail,
+        string what = gif ? "GIF" : "영상";
+        string detail = $"{ImageFiles.SizeText(size)} · {length.ToString(@"m\:ss")}" + (saved ? $" · {Path.GetFileName(path)}" : " · 아직 저장하지 않았습니다");
+        var actions = new List<(string, Action)>();
+        if (!saved) actions.Add(("저장", () => SaveRecordingAs(path)));
+        actions.Add(("공유", () => _ = ShareAsync(path)));
+        actions.Add(("복사", () => CopyFile(path)));
+        actions.Add(saved ? ("폴더", () => ImageFiles.ShowInFolder(path)) : ("열기", () => ImageFiles.Open(path)));
+        Toast.Notify(saved ? $"{what} 를 저장했습니다" : $"{what} 를 녹화했습니다", detail,
             thumbnail: gif ? ImageFiles.Thumbnail(path, 128) : null,
             icon: gif ? null : (Geometry)Application.Current.FindResource("VideoIcon"),
-            actions:
-            [
-                ("공유", () => _ = ShareAsync(path)),
-                ("복사", () => CopyFile(path)),
-                ("폴더", () => ImageFiles.ShowInFolder(path)),
-            ],
-            clicked: () => ImageFiles.Open(path), seconds: 10);
+            actions: actions, clicked: () => ImageFiles.Open(path), seconds: saved ? 10 : 30);
+    }
+
+    /// <summary>저장하지 않은 녹화(임시 파일)를 사용자가 고른 곳으로 옮김</summary>
+    public void SaveRecordingAs(string temp)
+    {
+        if (!File.Exists(temp))
+        {
+            Toast.Error("녹화 파일이 없습니다 (오래되어 지워졌을 수 있음).");
+            return;
+        }
+        string extension = Path.GetExtension(temp);
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "녹화 저장",
+            FileName = Path.GetFileNameWithoutExtension(temp),
+            InitialDirectory = Settings.DialogFolder,
+            Filter = extension.Equals(".gif", StringComparison.OrdinalIgnoreCase) ? "GIF (*.gif)|*.gif" : "MP4 영상 (*.mp4)|*.mp4",
+            DefaultExt = extension
+        };
+        if (dialog.ShowDialog() != true) return;
+        try
+        {
+            File.Move(temp, dialog.FileName, overwrite: true);
+            NotifySaved(dialog.FileName);
+            Toast.Notify("저장했습니다", dialog.FileName, actions: [("폴더", () => ImageFiles.ShowInFolder(dialog.FileName))], seconds: 5);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            Toast.Error("저장하지 못했습니다: " + error.Message);
+        }
     }
 
     // ───────── 공유 · 복사 · 지우기 ─────────
@@ -274,6 +317,7 @@ public sealed class CaptureController(AppSettings settings)
         try
         {
             ImageFiles.Recycle(path);
+            RecentFiles.Remove(path);
             FilesChanged?.Invoke();
             Toast.Notify("휴지통으로 옮겼습니다", Path.GetFileName(path), seconds: 4);
         }

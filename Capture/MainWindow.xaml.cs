@@ -80,19 +80,15 @@ public partial class MainWindow : Window
 
     private void LoadRecent()
     {
-        string folder = _controller.Settings.SaveFolder;
+        // 저장한 캡처만 (자동 저장 · 편집 창의 저장 · 녹화 저장). 저장하지 않은 캡처는 없음
         List<RecentItem> items = [];
-        try
+        foreach (string path in RecentFiles.All().Take(RecentCount))
         {
-            if (Directory.Exists(folder))
-                items = [.. new DirectoryInfo(folder).EnumerateFiles()
-                    .Where(file => ImageFiles.Extensions.Contains(file.Extension.ToLowerInvariant()))
-                    .OrderByDescending(file => file.LastWriteTime)
-                    .Take(RecentCount)
-                    .Select(file => new RecentItem(file.FullName, file.LastWriteTime))];
+            try { items.Add(new RecentItem(path, File.GetLastWriteTime(path))); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
         RecentList.ItemsSource = items;
+        FolderLink.Visibility = _controller.Settings.HasFolder ? Visibility.Visible : Visibility.Collapsed;
         EmptyText.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         // 미리 보기는 뒤에서 읽어 채움
         _ = Task.Run(() =>
@@ -151,7 +147,10 @@ public partial class MainWindow : Window
         if (ItemOf(sender) is { } item) _controller.Delete(item.Path);
     }
 
-    private void OpenFolder_Click(object sender, RoutedEventArgs e) => ImageFiles.OpenFolder(_controller.Settings.SaveFolder);
+    private void OpenFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (_controller.Settings.HasFolder) ImageFiles.OpenFolder(_controller.Settings.SaveFolder);
+    }
 
     // ───────── 설정 ─────────
 
