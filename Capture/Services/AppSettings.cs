@@ -47,7 +47,12 @@ public sealed class AppSettings
         {
             Directory.CreateDirectory(DataDirectory);
             string temp = FilePath + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+            // 한글 경로를 그대로 (이스케이프하지 않고) 써서 열어 봐도 읽히게
+            File.WriteAllText(temp, JsonSerializer.Serialize(this, new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            }));
             File.Move(temp, FilePath, overwrite: true);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }

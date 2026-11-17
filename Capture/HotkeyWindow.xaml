@@ -4,7 +4,7 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="단축키 - Capture"
         Icon="Assets/Capture.ico"
-        Width="440" SizeToContent="Height" ResizeMode="NoResize"
+        Width="460" SizeToContent="Height" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner" WindowStyle="None" ShowInTaskbar="False"
         Background="{StaticResource WindowBrush}" Foreground="{StaticResource TextBrush}"
         FontFamily="{StaticResource UiFont}"
@@ -51,7 +51,7 @@
                 <StackPanel x:Name="Rows" />
                 <TextBlock x:Name="Message" Margin="0,4,0,0" FontSize="12.5" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Visibility="Collapsed" />
                 <TextBlock Margin="0,10,0,0" FontSize="12" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap"
-                           Text="칸을 누르고 새 키를 누르세요. Backspace 는 단축키 없애기, Esc 는 그대로 두기." />
+                           Text="칸을 누르고 원하는 키나 조합을 누르세요. Esc 는 그대로 두기, × 는 단축키 없애기." />
                 <DockPanel Margin="0,18,0,0">
                     <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryPillButtonStyle}" Click="Close_Click" Content="닫기" />
                     <Button HorizontalAlignment="Left" Style="{StaticResource PillButtonStyle}" Click="Reset_Click" Content="기본값으로" />

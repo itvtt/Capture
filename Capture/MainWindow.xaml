@@ -44,6 +44,19 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <!-- 칸 아래 단축키: 누르면 그 단축키를 바로 바꿈 -->
+        <Style x:Key="KeyPillStyle" TargetType="Border">
+            <Setter Property="Margin" Value="0,6,0,0" />
+            <Setter Property="Padding" Value="8,2,8,3" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Background" Value="#FF303137" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="ToolTip" Value="눌러서 단축키 바꾸기" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#FF45464D" /></Trigger>
+            </Style.Triggers>
+        </Style>
         <!-- 최근 칸: 미리 보기 + 이름 -->
         <Style x:Key="RecentStyle" TargetType="Button">
             <Setter Property="Width" Value="140" />
@@ -140,7 +153,7 @@
                             <Path Width="20" Height="20" Stretch="Uniform" Data="{StaticResource RegionIcon}" Stroke="#FF7FB0FF" StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                         </Border>
                         <TextBlock Margin="0,9,0,0" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold" Text="영역" />
-                        <TextBlock x:Name="RegionKey" Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11.5" Foreground="{StaticResource MutedTextBrush}" />
+                        <Border Style="{StaticResource KeyPillStyle}" Tag="Region" PreviewMouseLeftButtonDown="Key_PreviewMouseLeftButtonDown"><TextBlock x:Name="RegionKey" FontSize="11.5" Foreground="#FFC7C7CC" /></Border>
                     </StackPanel>
                 </Button>
                 <Button x:Name="ScrollTile" Style="{StaticResource TileStyle}" Click="Tile_Click" Tag="Scroll" ToolTip="스크롤하며 긴 화면 한 장으로">
@@ -149,7 +162,7 @@
                             <Path Width="20" Height="20" Stretch="Uniform" Data="{StaticResource ScrollIcon}" Stroke="#FF5FE08A" StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
                         </Border>
                         <TextBlock Margin="0,9,0,0" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold" Text="스크롤" />
-                        <TextBlock x:Name="ScrollKey" Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11.5" Foreground="{StaticResource MutedTextBrush}" />
+                        <Border Style="{StaticResource KeyPillStyle}" Tag="Scroll" PreviewMouseLeftButtonDown="Key_PreviewMouseLeftButtonDown"><TextBlock x:Name="ScrollKey" FontSize="11.5" Foreground="#FFC7C7CC" /></Border>
                     </StackPanel>
                 </Button>
                 <Button x:Name="GifTile" Style="{StaticResource TileStyle}" Click="Tile_Click" Tag="Gif" ToolTip="움직이는 그림 (GIF) 녹화">
@@ -158,7 +171,7 @@
                             <Path Width="20" Height="20" Stretch="Uniform" Data="{StaticResource GifIcon}" Stroke="#FFFFB84D" StrokeThickness="1.6" StrokeLineJoin="Round" />
                         </Border>
                         <TextBlock Margin="0,9,0,0" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold" Text="GIF" />
-                        <TextBlock x:Name="GifKey" Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11.5" Foreground="{StaticResource MutedTextBrush}" />
+                        <Border Style="{StaticResource KeyPillStyle}" Tag="Gif" PreviewMouseLeftButtonDown="Key_PreviewMouseLeftButtonDown"><TextBlock x:Name="GifKey" FontSize="11.5" Foreground="#FFC7C7CC" /></Border>
                     </StackPanel>
                 </Button>
                 <Button x:Name="VideoTile" Style="{StaticResource TileStyle}" Click="Tile_Click" Tag="Video" ToolTip="영상 (MP4) 녹화">
@@ -167,7 +180,7 @@
                             <Path Width="20" Height="20" Stretch="Uniform" Data="{StaticResource VideoIcon}" Stroke="#FFFF7A70" StrokeThickness="1.6" />
                         </Border>
                         <TextBlock Margin="0,9,0,0" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold" Text="영상" />
-                        <TextBlock x:Name="VideoKey" Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11.5" Foreground="{StaticResource MutedTextBrush}" />
+                        <Border Style="{StaticResource KeyPillStyle}" Tag="Video" PreviewMouseLeftButtonDown="Key_PreviewMouseLeftButtonDown"><TextBlock x:Name="VideoKey" FontSize="11.5" Foreground="#FFC7C7CC" /></Border>
                     </StackPanel>
                 </Button>
             </UniformGrid>

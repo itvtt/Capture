@@ -38,6 +38,28 @@ public readonly record struct HotkeyBinding(uint Modifiers, uint Key)
         0x20 => "Space",
         0x09 => "Tab",
         0x0D => "Enter",
+        0x08 => "Backspace",
+        0x1B => "Esc",
+        0x25 => "←",
+        0x26 => "↑",
+        0x27 => "→",
+        0x28 => "↓",
+        0xBA => ";",
+        0xBB => "=",
+        0xBC => ",",
+        0xBD => "-",
+        0xBE => ".",
+        0xBF => "/",
+        0xC0 => "`",
+        0xDB => "[",
+        0xDC => "\\",
+        0xDD => "]",
+        0xDE => "'",
+        0x6A => "Num*",
+        0x6B => "Num+",
+        0x6D => "Num-",
+        0x6E => "Num.",
+        0x6F => "Num/",
         >= 0x30 and <= 0x39 or >= 0x41 and <= 0x5A => ((char)vk).ToString(),
         >= 0x60 and <= 0x69 => "Num" + (vk - 0x60),
         >= 0x70 and <= 0x87 => "F" + (vk - 0x6F),
@@ -45,29 +67,24 @@ public readonly record struct HotkeyBinding(uint Modifiers, uint Key)
     };
 
     /// <summary>
-    /// 키보드 입력을 단축키로. 수정 키 없이 쓸 수 있는 것은 PrtSc · F1~F24 · Pause · ScrollLock · Insert 뿐
-    /// (글자 키 하나를 단축키로 잡으면 글을 쓸 수 없음). 안 되면 이유를 돌려줌
+    /// 누른 키(조합)를 그대로 단축키로. 어떤 키든 됨 (수정 키만 누른 것은 아직 아님 → null).
+    /// 글자 · 숫자 키처럼 글을 쓸 때 누르는 키면 warning 에 알려 줄 말 (그래도 단축키로 씀)
     /// </summary>
-    public static HotkeyBinding? FromKey(Key key, ModifierKeys modifiers, out string? problem)
+    public static HotkeyBinding? FromKey(Key key, ModifierKeys modifiers, out string? warning)
     {
-        problem = null;
+        warning = null;
         uint vk = (uint)KeyInterop.VirtualKeyFromKey(key);
+        if (vk == 0) return null;
         uint mods = 0;
         if (modifiers.HasFlag(ModifierKeys.Control)) mods |= MOD_CONTROL;
         if (modifiers.HasFlag(ModifierKeys.Alt)) mods |= MOD_ALT;
         if (modifiers.HasFlag(ModifierKeys.Shift)) mods |= MOD_SHIFT;
         if (modifiers.HasFlag(ModifierKeys.Windows)) mods |= MOD_WIN;
-        bool alone = vk is VK_SNAPSHOT or 0x13 or 0x91 or 0x2D || vk is >= 0x70 and <= 0x87;
-        if (vk == 0 || (mods == 0 && !alone))
-        {
-            problem = "Ctrl · Alt · Shift 중 하나와 함께 누르세요. (PrtSc · F1~F12 · Pause 는 혼자도 됨)";
-            return null;
-        }
-        if (mods == MOD_SHIFT && !alone)
-        {
-            problem = "Shift 만으로는 글자를 쓸 때와 겹칩니다. Ctrl 이나 Alt 와 함께 누르세요.";
-            return null;
-        }
+        var binding = new HotkeyBinding(mods, vk);
+        bool typing = vk is 0x08 or 0x09 or 0x0D or 0x20 or (>= 0x25 and <= 0x28) or (>= 0x30 and <= 0x39) or (>= 0x41 and <= 0x5A)
+            or (>= 0x60 and <= 0x6F) or (>= 0xBA and <= 0xC0) or (>= 0xDB and <= 0xDE);
+        if (typing && (mods & ~MOD_SHIFT) == 0)
+            warning = $"{binding} 는 글을 쓸 때도 누르는 키라, Capture 가 켜져 있는 동안 다른 프로그램에서 그 키가 입력되지 않습니다.";
         return new HotkeyBinding(mods, vk);
     }
 }

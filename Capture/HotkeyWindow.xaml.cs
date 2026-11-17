@@ -9,7 +9,8 @@ namespace Capture;
 
 /// <summary>
 /// 단축키 바꾸기: 모드마다 칸 하나. 칸을 누르면 키를 기다리고(그동안 이 앱의 단축키는 모두 놓음), 누른 조합으로 바꿔 바로 등록.
-/// 다른 모드와 같거나 다른 프로그램이 쓰는 조합이면 알려 주고 그대로 둠
+/// 어떤 키든 됨 (글자 키처럼 글을 쓸 때 누르는 키는 알려 주기만). 다른 모드가 쓰던 키면 이쪽으로 옮김.
+/// 다른 프로그램이 쓰는 조합이면 알려 주고 그대로 둠
 /// </summary>
 public partial class HotkeyWindow : Window
 {
@@ -19,7 +20,7 @@ public partial class HotkeyWindow : Window
     private readonly Dictionary<CaptureMode, Button> _boxes = [];
     private CaptureMode? _waiting;
 
-    public HotkeyWindow(Hotkeys hotkeys)
+    public HotkeyWindow(Hotkeys hotkeys, CaptureMode? start = null)
     {
         _hotkeys = hotkeys;
         InitializeComponent();
@@ -28,15 +29,40 @@ public partial class HotkeyWindow : Window
             var row = new Grid { Margin = new Thickness(0, 0, 0, 10) };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(78) });
             row.ColumnDefinitions.Add(new ColumnDefinition());
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.Children.Add(new TextBlock { Text = Hotkeys.Name(mode), FontSize = 13.5, VerticalAlignment = VerticalAlignment.Center });
             var box = new Button { Style = (Style)FindResource("KeyBoxStyle"), Tag = mode };
             box.Click += (_, _) => StartWaiting(mode);
             Grid.SetColumn(box, 1);
             row.Children.Add(box);
+            // 단축키 없애기
+            var clear = new Button
+            {
+                Style = (Style)FindResource("IconButtonStyle"),
+                Margin = new Thickness(6, 0, 0, 0),
+                ToolTip = "단축키 없애기",
+                Tag = mode,
+                Content = new System.Windows.Shapes.Path
+                {
+                    Width = 10, Height = 10, Data = Geometry.Parse("M 0.5,0.5 L 9.5,9.5 M 9.5,0.5 L 0.5,9.5"),
+                    Stroke = new SolidColorBrush(Color.FromRgb(0xA1, 0xA1, 0xA8)), StrokeThickness = 1.4
+                }
+            };
+            clear.Click += (_, _) =>
+            {
+                StopWaiting();
+                _hotkeys.Set(mode, default);
+                Message.Visibility = Visibility.Collapsed;
+                ShowAll();
+            };
+            Grid.SetColumn(clear, 2);
+            row.Children.Add(clear);
             Rows.Children.Add(row);
             _boxes[mode] = box;
         }
         ShowAll();
+        // 큰 창에서 그 모드의 단축키 글자를 눌러 열었으면 바로 키를 기다림
+        if (start is { } first) Loaded += (_, _) => StartWaiting(first);
     }
 
     private void ShowAll()
@@ -46,7 +72,7 @@ public partial class HotkeyWindow : Window
         {
             bool waiting = _waiting == mode;
             box.BorderBrush = waiting ? Waiting : Normal;
-            box.Content = waiting ? "새 키를 누르세요…" : _hotkeys.LabelFor(mode) + (failed.Contains(mode) ? "  · 다른 프로그램이 쓰는 중" : "");
+            box.Content = waiting ? "원하는 키를 누르세요…" : _hotkeys.LabelFor(mode) + (failed.Contains(mode) ? "  · 사용 중" : "");
             box.Foreground = waiting ? (Brush)FindResource("MutedTextBrush") : failed.Contains(mode) ? (Brush)FindResource("WarningBrush") : (Brush)FindResource("TextBrush");
         }
     }
@@ -100,25 +126,19 @@ public partial class HotkeyWindow : Window
             StopWaiting();
             return;
         }
-        if (modifiers == ModifierKeys.None && key is Key.Back or Key.Delete)
+        if (HotkeyBinding.FromKey(key, modifiers, out string? warning) is not { } binding) return;
+        // 다른 모드가 쓰던 키면 이쪽으로 옮기고 그 모드는 단축키 없음
+        string? moved = null;
+        foreach (var other in Hotkeys.Modes.Where(other => other != mode && _hotkeys.Get(other) == binding).ToList())
         {
-            _hotkeys.Set(mode, default);
-            StopWaiting();
-            return;
-        }
-        if (HotkeyBinding.FromKey(key, modifiers, out string? problem) is not { } binding)
-        {
-            Say(problem!);
-            return;
-        }
-        if (Hotkeys.Modes.Where(other => other != mode && _hotkeys.Get(other) == binding).Cast<CaptureMode?>().FirstOrDefault() is { } taken)
-        {
-            Say($"{binding} 는 {Hotkeys.Name(taken)} 단축키입니다. 다른 키를 누르세요.");
-            return;
+            _hotkeys.Set(other, default);
+            moved = $"{Hotkeys.Name(other)} 단축키였던 {binding} 를 옮겼습니다. {Hotkeys.Name(other)} 는 이제 단축키가 없습니다.";
         }
         var previous = _hotkeys.Get(mode);
         _hotkeys.Set(mode, binding);
         StopWaiting();
+        Message.Visibility = Visibility.Collapsed;
+        if (moved is not null || warning is not null) Say(string.Join(" ", new[] { moved, warning }.Where(text => text is not null)));
         if (_hotkeys.Failed.Contains(mode))
         {
             // 다른 프로그램이 쓰는 조합: 앞의 것으로 되돌림

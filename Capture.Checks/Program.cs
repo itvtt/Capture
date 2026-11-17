@@ -353,8 +353,16 @@ static class Program
         var altF = HotkeyBinding.FromKey(System.Windows.Input.Key.F, System.Windows.Input.ModifierKeys.Alt | System.Windows.Input.ModifierKeys.Control, out _);
         Equal("Ctrl+Alt+F", altF?.ToString(), "Ctrl+Alt+F");
         Equal("F9", HotkeyBinding.FromKey(System.Windows.Input.Key.F9, System.Windows.Input.ModifierKeys.None, out _)?.ToString(), "F9 alone");
-        Assert(HotkeyBinding.FromKey(System.Windows.Input.Key.A, System.Windows.Input.ModifierKeys.None, out var alone) is null && alone is not null, "A alone is refused");
-        Assert(HotkeyBinding.FromKey(System.Windows.Input.Key.A, System.Windows.Input.ModifierKeys.Shift, out _) is null, "Shift+A is refused");
+        // 어떤 키든 됨: 글을 쓸 때 누르는 키는 알려 주기만
+        Equal("A", HotkeyBinding.FromKey(System.Windows.Input.Key.A, System.Windows.Input.ModifierKeys.None, out var typing)?.ToString(), "A alone");
+        Assert(typing is not null, "A alone comes with a warning");
+        Equal("Shift+A", HotkeyBinding.FromKey(System.Windows.Input.Key.A, System.Windows.Input.ModifierKeys.Shift, out typing)?.ToString(), "Shift+A");
+        Assert(typing is not null, "Shift+A comes with a warning");
+        Equal("Backspace", HotkeyBinding.FromKey(System.Windows.Input.Key.Back, System.Windows.Input.ModifierKeys.None, out _)?.ToString(), "Backspace");
+        Equal("Ctrl+Win+.", HotkeyBinding.FromKey(System.Windows.Input.Key.OemPeriod, System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Windows, out typing)?.ToString(), "Ctrl+Win+.");
+        Assert(typing is null, "Ctrl+Win+. has no warning");
+        HotkeyBinding.FromKey(System.Windows.Input.Key.F, System.Windows.Input.ModifierKeys.Alt | System.Windows.Input.ModifierKeys.Control, out typing);
+        Assert(typing is null, "Ctrl+Alt+F has no warning");
 
         // 저장한 단축키를 다음 실행에서 그대로 읽음
         string folder = Path.Combine(root, "hotkey-settings");

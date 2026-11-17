@@ -143,28 +143,52 @@ static class EndToEnd
             if (!ok) failures++;
         }
 
+        void Clear(CaptureMode mode)
+        {
+            var row = (System.Windows.Controls.Grid)boxes[mode].Parent;
+            var button = row.Children.OfType<System.Windows.Controls.Button>().Last();
+            var point = button.PointToScreen(new System.Windows.Point(button.ActualWidth / 2, button.ActualHeight / 2));
+            int size = Marshal.SizeOf<Input>();
+            SendInput(1, [Move((int)point.X, (int)point.Y)], size);
+            Program.Pump(TimeSpan.FromMilliseconds(150), () => false);
+            SendInput(2, [new Input { Type = 0, Mouse = new MouseInput { Flags = 0x0002 } }, new Input { Type = 0, Mouse = new MouseInput { Flags = 0x0004 } }], size);
+            Program.Pump(TimeSpan.FromMilliseconds(300), () => false);
+        }
+
         Click(CaptureMode.Gif);
         Press(VkControl, VkAlt, VkG);
         Expect(hotkeys.LabelFor(CaptureMode.Gif) == "Ctrl+Alt+G", "GIF set to " + hotkeys.LabelFor(CaptureMode.Gif));
         Expect(!hotkeys.Failed.Contains(CaptureMode.Gif), "Ctrl+Alt+G registered");
         Click(CaptureMode.Video);
         Press(VkBack);
-        Expect(hotkeys.Get(CaptureMode.Video).IsNone, "video cleared: " + hotkeys.LabelFor(CaptureMode.Video));
-        Click(CaptureMode.Region);
-        Press(VkControl, VkAlt, VkG);
-        Expect(hotkeys.LabelFor(CaptureMode.Region) == "PrtSc" && dialog.Message.IsVisible, "duplicate refused: " + dialog.Message.Text);
-        Press(VkEscape);
-        Expect(!hotkeys.Failed.Any(), "all registered again after Esc");
+        Expect(hotkeys.LabelFor(CaptureMode.Video) == "Backspace" && dialog.Message.IsVisible, "Backspace alone is allowed with a note: " + hotkeys.LabelFor(CaptureMode.Video));
+        Clear(CaptureMode.Video);
+        Expect(hotkeys.Get(CaptureMode.Video).IsNone, "× clears video: " + hotkeys.LabelFor(CaptureMode.Video));
         Click(CaptureMode.Scroll);
         Press(VkControl, VkAlt, VkSnapshot);
         Expect(hotkeys.LabelFor(CaptureMode.Scroll) == "Ctrl+Alt+PrtSc", "scroll set with PrtSc: " + hotkeys.LabelFor(CaptureMode.Scroll));
+        Click(CaptureMode.Region);
+        Press(VkControl, VkAlt, VkG);
+        Expect(hotkeys.LabelFor(CaptureMode.Region) == "Ctrl+Alt+G" && hotkeys.Get(CaptureMode.Gif).IsNone, "GIF's key moved to region: " + dialog.Message.Text);
+        Click(CaptureMode.Gif);
+        Press(VkEscape);
+        Expect(hotkeys.Get(CaptureMode.Gif).IsNone && !hotkeys.Failed.Any(), "Esc keeps it and all are registered again");
         string saved = File.ReadAllText(Path.Combine(Capture.Services.AppSettings.DataDirectory, "settings.json"));
-        Expect(saved.Contains("\"Gif\"") && saved.Contains("\"Video\""), "saved to settings.json");
+        Expect(saved.Contains("\"Region\"") && saved.Contains("\"Video\""), "saved to settings.json");
         dialog.Close();
         Program.Pump(TimeSpan.FromMilliseconds(300), () => false);
         Press(VkControl, VkAlt, VkG);
         Program.Pump(TimeSpan.FromMilliseconds(500), () => pressed is not null);
-        Expect(pressed == CaptureMode.Gif, "Ctrl+Alt+G starts GIF: " + pressed);
+        Expect(pressed == CaptureMode.Region, "Ctrl+Alt+G starts region capture: " + pressed);
+
+        // 큰 창에서 단축키 글자를 눌렀을 때처럼: 창이 열리면 영상 칸이 바로 키를 기다림
+        var direct = new Capture.HotkeyWindow(hotkeys, CaptureMode.Video) { WindowStartupLocation = System.Windows.WindowStartupLocation.CenterScreen };
+        direct.Show();
+        direct.Activate();
+        Program.Pump(TimeSpan.FromMilliseconds(600), () => false);
+        Press(0x77);  // F8
+        Expect(hotkeys.LabelFor(CaptureMode.Video) == "F8", "opened on video, F8 set: " + hotkeys.LabelFor(CaptureMode.Video));
+        direct.Close();
         return failures == 0 ? 0 : 1;
     }
 

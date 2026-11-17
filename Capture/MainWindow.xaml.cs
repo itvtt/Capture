@@ -205,11 +205,18 @@ public partial class MainWindow : Window
 
     private void Hotkeys_Click(object sender, RoutedEventArgs e) => OpenHotkeys();
 
-    /// <summary>단축키 바꾸기 창 (트레이 메뉴에서도)</summary>
-    public void OpenHotkeys()
+    // 칸 아래 단축키 글자: 칸(캡처 시작)이 눌리지 않게 하고 그 단축키를 바로 바꾸기
+    private void Key_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if ((sender as FrameworkElement)?.Tag is string tag && Enum.TryParse<CaptureMode>(tag, out var mode)) OpenHotkeys(mode);
+    }
+
+    /// <summary>단축키 바꾸기 창 (트레이 메뉴에서도). mode 를 주면 그 칸이 바로 키를 기다림</summary>
+    public void OpenHotkeys(CaptureMode? mode = null)
     {
         if (!IsVisible) ShowFront();
-        new HotkeyWindow(_hotkeys) { Owner = this }.ShowDialog();
+        new HotkeyWindow(_hotkeys, mode) { Owner = this }.ShowDialog();
     }
 
     private void KeyboardSettings_Click(object sender, RoutedEventArgs e)
