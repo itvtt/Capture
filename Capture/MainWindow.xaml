@@ -44,6 +44,29 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <!-- 제목 표시줄의 둥근 글자 단추 (단축키) -->
+        <Style x:Key="TitlePillStyle" TargetType="Button">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="12,0,14,0" />
+            <Setter Property="Background" Value="#FF2C2D32" />
+            <Setter Property="Foreground" Value="#FFF5F5F7" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Face" Background="{TemplateBinding Background}" CornerRadius="15" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Face" Property="Background" Value="#FF3A3B42" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <!-- 칸 아래 단축키: 누르면 그 단축키를 바로 바꿈 -->
         <Style x:Key="KeyPillStyle" TargetType="Border">
             <Setter Property="Margin" Value="0,6,0,0" />
@@ -122,6 +145,14 @@
                     <TextBlock x:Name="VersionText" Margin="8,1,0,0" VerticalAlignment="Center" FontSize="11.5" Foreground="{StaticResource MutedTextBrush}" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- 단축키 바꾸기: 눈에 띄게 제목 표시줄에 -->
+                    <Button Margin="0,0,10,0" Style="{StaticResource TitlePillStyle}" Click="Hotkeys_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="캡처 단축키를 원하는 키로 바꾸기">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Width="16" Height="11" Stretch="Uniform" VerticalAlignment="Center" Stroke="#FFD9DCE3" StrokeThickness="1.2" StrokeLineJoin="Round"
+                                  Data="M 0.5,0.5 L 15.5,0.5 15.5,10.5 0.5,10.5 Z M 3,3.5 L 4,3.5 M 6,3.5 L 7,3.5 M 9,3.5 L 10,3.5 M 12,3.5 L 13,3.5 M 4.5,7.5 L 11.5,7.5" />
+                            <TextBlock Margin="7,0,0,0" VerticalAlignment="Center" Text="단축키" />
+                        </StackPanel>
+                    </Button>
                     <Button Style="{StaticResource ChromeButtonStyle}" Click="Minimize_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="최소화">
                         <Path Width="12" Height="1" Data="M 0,0.5 L 12,0.5" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1" />
                     </Button>
@@ -153,7 +184,7 @@
                             <Path Width="20" Height="20" Stretch="Uniform" Data="{StaticResource RegionIcon}" Stroke="#FF7FB0FF" StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                         </Border>
                         <TextBlock Margin="0,9,0,0" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold" Text="영역" />
-                        <Border Style="{StaticResource KeyPillStyle}" Tag="Region" PreviewMouseLeftButtonDown="Key_PreviewMouseLeftButtonDown"><TextBlock x:Name="RegionKey" FontSize="11.5" Foreground="#FFC7C7CC" /></Border>
+                        <Border Style="{StaticResource KeyPillStyle}" Tag="Region" PreviewMouseLeftButtonDown="Key_PreviewMouseLeftButtonDown"><StackPanel Orientation="Horizontal"><TextBlock x:Name="RegionKey" FontSize="11.5" Foreground="#FFC7C7CC" /><Path Width="9" Height="9" Margin="6,0,0,0" VerticalAlignment="Center" Stretch="Uniform" Stroke="#FF8E8E96" StrokeThickness="1.1" StrokeLineJoin="Round" Data="{StaticResource PencilIcon}" /></StackPanel></Border>
                     </StackPanel>
                 </Button>
                 <Button x:Name="ScrollTile" Style="{StaticResource TileStyle}" Click="Tile_Click" Tag="Scroll" ToolTip="스크롤하며 긴 화면 한 장으로">
@@ -162,7 +193,7 @@
                             <Path Width="20" Height="20" Stretch="Uniform" Data="{StaticResource ScrollIcon}" Stroke="#FF5FE08A" StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
                         </Border>
                         <TextBlock Margin="0,9,0,0" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold" Text="스크롤" />
-                        <Border Style="{StaticResource KeyPillStyle}" Tag="Scroll" PreviewMouseLeftButtonDown="Key_PreviewMouseLeftButtonDown"><TextBlock x:Name="ScrollKey" FontSize="11.5" Foreground="#FFC7C7CC" /></Border>
+                        <Border Style="{StaticResource KeyPillStyle}" Tag="Scroll" PreviewMouseLeftButtonDown="Key_PreviewMouseLeftButtonDown"><StackPanel Orientation="Horizontal"><TextBlock x:Name="ScrollKey" FontSize="11.5" Foreground="#FFC7C7CC" /><Path Width="9" Height="9" Margin="6,0,0,0" VerticalAlignment="Center" Stretch="Uniform" Stroke="#FF8E8E96" StrokeThickness="1.1" StrokeLineJoin="Round" Data="{StaticResource PencilIcon}" /></StackPanel></Border>
                     </StackPanel>
                 </Button>
                 <Button x:Name="GifTile" Style="{StaticResource TileStyle}" Click="Tile_Click" Tag="Gif" ToolTip="움직이는 그림 (GIF) 녹화">
@@ -171,7 +202,7 @@
                             <Path Width="20" Height="20" Stretch="Uniform" Data="{StaticResource GifIcon}" Stroke="#FFFFB84D" StrokeThickness="1.6" StrokeLineJoin="Round" />
                         </Border>
                         <TextBlock Margin="0,9,0,0" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold" Text="GIF" />
-                        <Border Style="{StaticResource KeyPillStyle}" Tag="Gif" PreviewMouseLeftButtonDown="Key_PreviewMouseLeftButtonDown"><TextBlock x:Name="GifKey" FontSize="11.5" Foreground="#FFC7C7CC" /></Border>
+                        <Border Style="{StaticResource KeyPillStyle}" Tag="Gif" PreviewMouseLeftButtonDown="Key_PreviewMouseLeftButtonDown"><StackPanel Orientation="Horizontal"><TextBlock x:Name="GifKey" FontSize="11.5" Foreground="#FFC7C7CC" /><Path Width="9" Height="9" Margin="6,0,0,0" VerticalAlignment="Center" Stretch="Uniform" Stroke="#FF8E8E96" StrokeThickness="1.1" StrokeLineJoin="Round" Data="{StaticResource PencilIcon}" /></StackPanel></Border>
                     </StackPanel>
                 </Button>
                 <Button x:Name="VideoTile" Style="{StaticResource TileStyle}" Click="Tile_Click" Tag="Video" ToolTip="영상 (MP4) 녹화">
@@ -180,7 +211,7 @@
                             <Path Width="20" Height="20" Stretch="Uniform" Data="{StaticResource VideoIcon}" Stroke="#FFFF7A70" StrokeThickness="1.6" />
                         </Border>
                         <TextBlock Margin="0,9,0,0" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold" Text="영상" />
-                        <Border Style="{StaticResource KeyPillStyle}" Tag="Video" PreviewMouseLeftButtonDown="Key_PreviewMouseLeftButtonDown"><TextBlock x:Name="VideoKey" FontSize="11.5" Foreground="#FFC7C7CC" /></Border>
+                        <Border Style="{StaticResource KeyPillStyle}" Tag="Video" PreviewMouseLeftButtonDown="Key_PreviewMouseLeftButtonDown"><StackPanel Orientation="Horizontal"><TextBlock x:Name="VideoKey" FontSize="11.5" Foreground="#FFC7C7CC" /><Path Width="9" Height="9" Margin="6,0,0,0" VerticalAlignment="Center" Stretch="Uniform" Stroke="#FF8E8E96" StrokeThickness="1.1" StrokeLineJoin="Round" Data="{StaticResource PencilIcon}" /></StackPanel></Border>
                     </StackPanel>
                 </Button>
             </UniformGrid>

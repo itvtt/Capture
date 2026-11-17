@@ -192,6 +192,94 @@ static class EndToEnd
         return failures == 0 ? 0 : 1;
     }
 
+    /// <summary>사람이 하는 그대로: 큰 창의 영역 칸 아래 단축키 글자를 눌러 단축키 창(ShowDialog)을 열고 Ctrl+Alt+K → Esc 로 닫기</summary>
+    public static int FromMainWindow(string folder)
+    {
+        Directory.CreateDirectory(folder);
+        var settings = new Capture.Services.AppSettings { SaveFolder = folder };
+        using var hotkeys = new Capture.Services.Hotkeys(settings);
+        hotkeys.Register();
+        var main = new Capture.MainWindow(new Capture.CaptureController(settings), hotkeys) { WindowStartupLocation = System.Windows.WindowStartupLocation.CenterScreen };
+        main.Show();
+        main.Activate();
+        Program.Pump(TimeSpan.FromMilliseconds(800), () => false);
+        var pill = (System.Windows.FrameworkElement)((System.Windows.FrameworkElement)main.RegionKey).Parent;
+        var point = pill.PointToScreen(new System.Windows.Point(pill.ActualWidth / 2, pill.ActualHeight / 2));
+        string log = "";
+        var driver = Task.Run(() =>
+        {
+            int size = Marshal.SizeOf<Input>();
+            SendInput(1, [Move((int)point.X, (int)point.Y)], size);
+            Thread.Sleep(200);
+            SendInput(2, [new Input { Type = 0, Mouse = new MouseInput { Flags = 0x0002 } }, new Input { Type = 0, Mouse = new MouseInput { Flags = 0x0004 } }], size);
+            Thread.Sleep(1200);
+            log += "focus=" + GetForegroundTitle() + "; ";
+            Keys(VkControl, 0x12, 0x4B);  // Ctrl+Alt+K
+            Thread.Sleep(800);
+            log += "after key=" + GetForegroundTitle() + "; ";
+            Keys(VkEscape);
+            Thread.Sleep(600);
+            Keys(VkEscape);
+            Thread.Sleep(300);
+        });
+        Program.Pump(TimeSpan.FromSeconds(15), () => driver.IsCompleted);
+        Console.WriteLine(log);
+        Console.WriteLine("region now: " + hotkeys.LabelFor(CaptureMode.Region));
+        foreach (System.Windows.Window w in System.Windows.Application.Current.Windows) Console.WriteLine("window open: " + w.Title + " " + w.IsVisible);
+        main.ExitApp();
+        return hotkeys.LabelFor(CaptureMode.Region) == "Ctrl+Alt+K" ? 0 : 1;
+    }
+
+    [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
+    [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr window, out Rect rect);
+    [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr window);
+
+    /// <summary>설치된 앱 그대로(따로 만든 설정 폴더): 큰 창의 영역 단축키 글자를 눌러 Ctrl+Alt+K, 저장된 설정을 출력</summary>
+    public static int RealApp(string exe, string folder)
+    {
+        string data = Path.Combine(folder, "data");
+        if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        Directory.CreateDirectory(data);
+        File.WriteAllText(Path.Combine(data, "settings.json"), JsonSerializer.Serialize(new { SaveFolder = Path.Combine(folder, "saves"), StartupConfigured = true, TrayHintShown = true }));
+        var start = new ProcessStartInfo(exe) { UseShellExecute = false };
+        start.Environment["CAPTURE_DATA_DIR"] = data;
+        using var app = Process.Start(start)!;
+        try
+        {
+            Thread.Sleep(3000);
+            IntPtr window = FindWindow(null, "Capture");
+            GetWindowRect(window, out var rect);
+            double scale = GetDpiForWindow(window) / 96.0;
+            Console.WriteLine($"main window {rect.Left},{rect.Top} scale {scale}");
+            int size = Marshal.SizeOf<Input>();
+            SendInput(1, [Move(rect.Left + (int)(100 * scale), rect.Top + (int)(155 * scale))], size);
+            Thread.Sleep(200);
+            SendInput(2, [new Input { Type = 0, Mouse = new MouseInput { Flags = 0x0002 } }, new Input { Type = 0, Mouse = new MouseInput { Flags = 0x0004 } }], size);
+            Thread.Sleep(1500);
+            Console.WriteLine("foreground: " + GetForegroundTitle());
+            Keys(VkControl, 0x12, 0x4B);
+            Thread.Sleep(1000);
+            Console.WriteLine("settings: " + File.ReadAllText(Path.Combine(data, "settings.json")).Replace(Environment.NewLine, " "));
+            Keys(VkEscape);
+            Thread.Sleep(500);
+            Console.WriteLine("app alive: " + !app.HasExited);
+        }
+        finally
+        {
+            if (!app.HasExited) app.Kill();
+        }
+        return 0;
+    }
+
+    [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(IntPtr window, System.Text.StringBuilder text, int count);
+    private static string GetForegroundTitle()
+    {
+        var text = new System.Text.StringBuilder(256);
+        GetWindowText(GetForegroundWindow(), text, 256);
+        return text.ToString();
+    }
+
     private static void Keys(params ushort[] keys)
     {
         var inputs = new List<Input>();
