@@ -1,0 +1,62 @@
+<Window x:Class="Capture.HotkeyWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="단축키 - Capture"
+        Icon="Assets/Capture.ico"
+        Width="440" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" ShowInTaskbar="False"
+        Background="{StaticResource WindowBrush}" Foreground="{StaticResource TextBrush}"
+        FontFamily="{StaticResource UiFont}"
+        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType" UseLayoutRounding="True"
+        PreviewKeyDown="Window_PreviewKeyDown" PreviewKeyUp="Window_PreviewKeyUp" Deactivated="Window_Deactivated" Closed="Window_Closed">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="44" CornerRadius="0" GlassFrameThickness="0" ResizeBorderThickness="0" UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
+    <Window.Resources>
+        <!-- 단축키 칸: 누르면 파란 테두리로 키를 기다림 -->
+        <Style x:Key="KeyBoxStyle" TargetType="Button">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Background" Value="#FF26272B" />
+            <Setter Property="BorderBrush" Value="#FF3A3B42" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Face" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1.5" CornerRadius="9" Padding="14,0">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Face" Property="Background" Value="#FF2E2F35" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border BorderBrush="#FF3A3B42" BorderThickness="1">
+        <StackPanel>
+            <Grid Height="44" Background="{StaticResource TitleBrush}">
+                <TextBlock Margin="20,0,0,0" VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold" Text="단축키" />
+                <Button HorizontalAlignment="Right" Margin="0,0,5,0" Style="{StaticResource CloseChromeButtonStyle}" Click="Close_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="닫기">
+                    <Path Width="12" Height="12" Data="M 1,1 L 11,11 M 11,1 L 1,11" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.2" />
+                </Button>
+            </Grid>
+            <StackPanel Margin="22,16,22,20">
+                <StackPanel x:Name="Rows" />
+                <TextBlock x:Name="Message" Margin="0,4,0,0" FontSize="12.5" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Visibility="Collapsed" />
+                <TextBlock Margin="0,10,0,0" FontSize="12" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap"
+                           Text="칸을 누르고 새 키를 누르세요. Backspace 는 단축키 없애기, Esc 는 그대로 두기." />
+                <DockPanel Margin="0,18,0,0">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryPillButtonStyle}" Click="Close_Click" Content="닫기" />
+                    <Button HorizontalAlignment="Left" Style="{StaticResource PillButtonStyle}" Click="Reset_Click" Content="기본값으로" />
+                </DockPanel>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

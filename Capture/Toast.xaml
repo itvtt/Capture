@@ -1,0 +1,33 @@
+<Window x:Class="Capture.Toast"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Capture"
+        Width="360" SizeToContent="Height"
+        WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True" ShowActivated="False"
+        WindowStartupLocation="Manual" Left="-10000" Top="-10000"
+        Background="#FF26272B" Foreground="#FFF5F5F7"
+        FontFamily="{StaticResource UiFont}"
+        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType" UseLayoutRounding="True"
+        MouseEnter="Window_MouseEnter" MouseLeave="Window_MouseLeave">
+    <!-- 알림 (오른쪽 아래): 녹화 끝 · 공유 링크 복사 · 오류. 몇 초 뒤 사라짐 (마우스를 올리면 기다림) -->
+    <Border x:Name="Frame" BorderBrush="#FF3A3B42" BorderThickness="1">
+        <Grid Margin="14,12,10,12">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+            <Border x:Name="ThumbFrame" Width="64" Height="48" Margin="0,0,12,0" CornerRadius="6" Background="#FF1C1C1E" ClipToBounds="True" VerticalAlignment="Top">
+                <Grid>
+                    <Image x:Name="Thumb" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality" />
+                    <Path x:Name="ThumbIcon" Width="20" Height="20" Stretch="Uniform" Stroke="#FFC7C7CC" StrokeThickness="1.4" Visibility="Collapsed" />
+                </Grid>
+            </Border>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock x:Name="TitleText" FontSize="13.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                <TextBlock x:Name="DetailText" Margin="0,3,0,0" FontSize="12" Foreground="#FFA1A1A8" TextWrapping="Wrap" MaxHeight="54" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <Button Grid.Column="2" Width="26" Height="26" VerticalAlignment="Top" Style="{StaticResource IconButtonStyle}" Click="Close_Click" ToolTip="닫기">
+                <Path Width="9" Height="9" Data="M 0.5,0.5 L 8.5,8.5 M 8.5,0.5 L 0.5,8.5" Stroke="#FFA1A1A8" StrokeThickness="1.3" />
+            </Button>
+            <WrapPanel x:Name="Actions" Grid.Row="1" Grid.ColumnSpan="3" Margin="0,10,0,0" Visibility="Collapsed" />
+        </Grid>
+    </Border>
+</Window>

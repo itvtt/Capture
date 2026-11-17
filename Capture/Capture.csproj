@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- 릴리스 버전의 바닥값: Actions 러너는 마지막 릴리스의 다음 번호를 고름 -->
+    <Version>1.0.0</Version>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <!-- 트레이 아이콘 (NotifyIcon) · 휴지통. WinForms 이름이 WPF 와 겹치지 않게 아래에서 전역 using 을 뺌 -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- 영상 인코더(Media Foundation)를 vtable 로 부름 -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>Capture</RootNamespace>
+    <AssemblyName>Capture</AssemblyName>
+    <ApplicationIcon>Assets\Capture.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyTitle>Capture</AssemblyTitle>
+    <Product>Capture</Product>
+    <Description>화면 캡처 · 스크롤 캡처 · GIF · 영상 녹화</Description>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+    <InternalsVisibleTo Include="Capture.Checks" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\Capture.ico" />
+    <Resource Include="Assets\Capture.png" />
+    <!-- 글꼴: Pretendard TrueType 판 (SIL OFL 1.1, 라이선스 파일을 함께 배포) -->
+    <Resource Include="Assets\Fonts\*.ttf" />
+    <Content Include="Assets\Fonts\Pretendard-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Remove="Assets\Build-Icon.ps1" />
+  </ItemGroup>
+
+  <!-- i-luncher AppKit: 자체 업데이트(update.json)와 릴리스 zip -->
+  <Import Project="AppKit\AppKit.targets" />
+</Project>
