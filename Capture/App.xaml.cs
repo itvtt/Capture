@@ -21,6 +21,9 @@ public partial class App : Application
     private CaptureController? _controller;
     private MainWindow? _main;
 
+    /// <summary>Windows 종료 · 런처의 업데이트(Restart Manager)로 끝나는 중: 창을 숨기지 않고 그냥 닫음</summary>
+    public static bool Ending { get; private set; }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -37,6 +40,7 @@ public partial class App : Application
             return;
         }
 
+        SessionEnding += (_, _) => Ending = true;
         var settings = AppSettings.Load();
         // 처음 한 번: Windows 시작할 때 실행 (PrtSc 가 늘 되게). 큰 창 아래에서 끌 수 있음.
         // 설치된 사본(%LOCALAPPDATA%\Programs\Capture)일 때만: bin 에서 실행한 개발 빌드는 등록하지 않음

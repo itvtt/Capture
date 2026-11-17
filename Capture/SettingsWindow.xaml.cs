@@ -23,6 +23,7 @@ public partial class SettingsWindow : Window
     private readonly CaptureController _controller;
     private readonly Dictionary<CaptureMode, Button> _boxes = [];
     private CaptureMode? _waiting;
+    private bool _closedByUser;  // 사용자가 닫음 (✕ · 완료 · Esc). 업데이트 · Windows 종료로 닫힌 것은 아님
 
     public SettingsWindow(Hotkeys hotkeys, CaptureController controller, bool firstRun = false)
     {
@@ -113,7 +114,7 @@ public partial class SettingsWindow : Window
     {
         if (_waiting is not { } mode)
         {
-            if (e.Key == Key.Escape) Close();
+            if (e.Key == Key.Escape) CloseByUser();
             return;
         }
         e.Handled = true;
@@ -244,13 +245,20 @@ public partial class SettingsWindow : Window
     private void Window_Closed(object? sender, EventArgs e)
     {
         StopWaiting();
-        // 한 번 보았으면 다음부터 처음 설정 없이 (정하지 않은 단축키는 없음, 자동 저장은 고른 대로)
-        if (!_controller.Settings.SetupDone)
+        // 사용자가 직접 닫았으면 다음부터 처음 설정 없이 (정하지 않은 단축키는 없음, 자동 저장은 고른 대로).
+        // 업데이트 · Windows 종료로 앱이 닫히며 같이 닫힌 것이면 다음에 다시 보여 줌
+        if (_closedByUser && !_controller.Settings.SetupDone)
         {
             _controller.Settings.SetupDone = true;
             _controller.Settings.Save();
         }
     }
 
-    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+    private void Close_Click(object sender, RoutedEventArgs e) => CloseByUser();
+
+    private void CloseByUser()
+    {
+        _closedByUser = true;
+        Close();
+    }
 }

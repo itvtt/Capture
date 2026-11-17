@@ -203,7 +203,7 @@ public partial class MainWindow : Window
 
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
-        if (_exiting) return;
+        if (_exiting || App.Ending) return;
         e.Cancel = true;
         Hide();
         if (!_controller.Settings.TrayHintShown)

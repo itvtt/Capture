@@ -382,7 +382,11 @@ static class EndToEnd
         SendInput((uint)inputs.Count, [.. inputs], Marshal.SizeOf<Input>());
     }
 
-    /// <summary>처음 실행: 설정이 비어 있으면 큰 창과 설정 창(안내)이 열리고, 그냥 닫으면 단축키 없이 다시 묻지 않음</summary>
+    /// <summary>
+    /// 처음 실행: 설정이 비어 있으면 큰 창과 처음 설정이 열림.
+    /// 런처의 업데이트처럼(Restart Manager) 앱이 닫히면 처음 설정은 끝난 것이 아님 → 다음 실행에 다시 열림.
+    /// 사용자가 Esc 로 닫으면 끝남(단축키 · 자동 저장 없음) → 그다음 실행에는 묻지 않음
+    /// </summary>
     public static int FirstRun(string exe, string folder)
     {
         string data = Path.Combine(folder, "data");
@@ -394,7 +398,8 @@ static class EndToEnd
             Console.WriteLine((ok ? "  ok   " : "  FAIL ") + what);
             if (!ok) failures++;
         }
-        for (int run = 1; run <= 2; run++)
+        string Saved() => File.Exists(Path.Combine(data, "settings.json")) ? File.ReadAllText(Path.Combine(data, "settings.json")) : "";
+        for (int run = 1; run <= 3; run++)
         {
             var start = new ProcessStartInfo(exe, "--tray") { UseShellExecute = false };
             start.Environment["CAPTURE_DATA_DIR"] = data;
@@ -402,18 +407,25 @@ static class EndToEnd
             try
             {
                 Thread.Sleep(3000);
-                bool settings = FindWindow(null, "처음 설정 - Capture") != IntPtr.Zero;
+                bool setup = FindWindow(null, "처음 설정 - Capture") != IntPtr.Zero;
                 if (run == 1)
                 {
-                    Expect(settings && FindWindow(null, "Capture") != IntPtr.Zero, "first run opens the main window and 설정 (even with --tray)");
+                    Expect(setup && FindWindow(null, "Capture") != IntPtr.Zero, "first run opens the main window and 처음 설정 (even with --tray)");
+                    RestartManagerClose(app);
+                    Expect(app.WaitForExit(15000), "closes when the launcher asks (Restart Manager, as for an update)");
+                    Expect(!Saved().Contains("\"SetupDone\": true"), "being closed for an update does not count as finishing 처음 설정");
+                }
+                else if (run == 2)
+                {
+                    Expect(setup, "처음 설정 opens again after that");
                     Keys(VkEscape);  // 정하지 않고 닫기
                     Thread.Sleep(800);
-                    string saved = File.ReadAllText(Path.Combine(data, "settings.json"));
-                    Expect(saved.Contains("\"SetupDone\": true"), "closing 처음 설정 remembers it was shown");
+                    string saved = Saved();
+                    Expect(saved.Contains("\"SetupDone\": true"), "closing 처음 설정 yourself finishes it");
                     Expect(saved.Contains("\"AutoSave\": false"), "auto-save stays off unless chosen");
                     Expect(!saved.Contains("\"Key\": 44"), "no shortcut was set");
                 }
-                else Expect(!settings, "second run does not ask again");
+                else Expect(!setup, "the next run does not ask again");
             }
             finally
             {
@@ -422,6 +434,27 @@ static class EndToEnd
             }
         }
         return failures == 0 ? 0 : 1;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RmUniqueProcess { public int ProcessId; public uint StartLow, StartHigh; }
+    [DllImport("rstrtmgr.dll", CharSet = CharSet.Unicode)] private static extern int RmStartSession(out uint session, int flags, System.Text.StringBuilder key);
+    [DllImport("rstrtmgr.dll", CharSet = CharSet.Unicode)]
+    private static extern int RmRegisterResources(uint session, uint files, string[]? names, uint processes, RmUniqueProcess[] list, uint services, string[]? serviceNames);
+    [DllImport("rstrtmgr.dll")] private static extern int RmShutdown(uint session, uint flags, IntPtr status);
+    [DllImport("rstrtmgr.dll")] private static extern int RmEndSession(uint session);
+
+    /// <summary>i-luncher 가 업데이트 전에 앱을 닫는 방법 그대로 (강제 아님)</summary>
+    private static void RestartManagerClose(Process process)
+    {
+        long started = process.StartTime.ToFileTime();
+        if (RmStartSession(out uint session, 0, new System.Text.StringBuilder(64)) != 0) return;
+        try
+        {
+            RmRegisterResources(session, 0, null, 1, [new RmUniqueProcess { ProcessId = process.Id, StartLow = (uint)started, StartHigh = (uint)(started >> 32) }], 0, null);
+            RmShutdown(session, 0, IntPtr.Zero);
+        }
+        finally { RmEndSession(session); }
     }
 
     private static void Keys(params ushort[] keys)
