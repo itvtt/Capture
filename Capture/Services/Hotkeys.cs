@@ -90,7 +90,7 @@ public readonly record struct HotkeyBinding(uint Modifiers, uint Key)
 }
 
 /// <summary>
-/// 전역 단축키. 기본은 PrtSc 캡처 · Ctrl+PrtSc 스크롤 · Shift+PrtSc GIF · Ctrl+Shift+PrtSc 영상이고 큰 창의 [단축키]에서 바꿈 (설정에 저장).
+/// 전역 단축키. 처음에는 하나도 없고(다른 프로그램의 단축키와 겹치지 않게) 사용자가 설정에서 정함 (설정에 저장).
 /// Windows 11 은 "Print Screen 키로 캡처 도구 열기"가 켜져 있으면 PrtSc 를 먼저 씀 → 등록하지 못한 것을 알려 줌
 /// </summary>
 public sealed class Hotkeys : IDisposable
@@ -118,13 +118,8 @@ public sealed class Hotkeys : IDisposable
     /// <summary>단축키가 바뀌었거나 등록 결과가 달라짐 (화면의 단축키 글자를 다시 쓰게)</summary>
     public event Action? Changed;
 
-    public static HotkeyBinding Default(CaptureMode mode) => mode switch
-    {
-        CaptureMode.Scroll => new(MOD_CONTROL, VK_SNAPSHOT),
-        CaptureMode.Gif => new(MOD_SHIFT, VK_SNAPSHOT),
-        CaptureMode.Video => new(MOD_CONTROL | MOD_SHIFT, VK_SNAPSHOT),
-        _ => new(0, VK_SNAPSHOT)
-    };
+    /// <summary>처음 값: 없음 (사용자가 정하지 않은 단축키는 등록하지 않음)</summary>
+    public static HotkeyBinding Default(CaptureMode mode) => default;
 
     public static string Name(CaptureMode mode) => mode switch
     {
@@ -180,11 +175,12 @@ public sealed class Hotkeys : IDisposable
         Changed?.Invoke();
     }
 
-    public void ResetDefaults()
+    /// <summary>단축키를 모두 없앰</summary>
+    public void ClearAll()
     {
         foreach (var mode in Modes) Unregister(mode);
-        foreach (var mode in Modes) _bindings[mode] = Default(mode);
-        _settings.Hotkeys = null;
+        foreach (var mode in Modes) _bindings[mode] = default;
+        _settings.Hotkeys = Modes.ToDictionary(m => m.ToString(), m => _bindings[m]);
         _settings.Save();
         Register();
         Changed?.Invoke();

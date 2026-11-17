@@ -158,10 +158,11 @@ public partial class MainWindow : Window
     /// <summary>칸 아래 단축키 글자, 그리고 등록하지 못한 단축키 안내 (PrtSc 는 Windows 11 캡처 도구가 먼저 쓰는 경우가 많음)</summary>
     private void ShowHotkeyState()
     {
-        RegionKey.Text = _hotkeys.LabelFor(CaptureMode.Region);
-        ScrollKey.Text = _hotkeys.LabelFor(CaptureMode.Scroll);
-        GifKey.Text = _hotkeys.LabelFor(CaptureMode.Gif);
-        VideoKey.Text = _hotkeys.LabelFor(CaptureMode.Video);
+        string Key(CaptureMode mode) => _hotkeys.Get(mode).IsNone ? "단축키 없음" : _hotkeys.LabelFor(mode);
+        RegionKey.Text = Key(CaptureMode.Region);
+        ScrollKey.Text = Key(CaptureMode.Scroll);
+        GifKey.Text = Key(CaptureMode.Gif);
+        VideoKey.Text = Key(CaptureMode.Video);
         var failed = _hotkeys.Failed;
         if (failed.Count == 0)
         {
@@ -179,10 +180,10 @@ public partial class MainWindow : Window
     private void Settings_Click(object sender, RoutedEventArgs e) => OpenSettings();
 
     /// <summary>설정 창: 단축키 · 저장 위치 · 시작할 때 실행 (트레이 메뉴에서도)</summary>
-    public void OpenSettings()
+    public void OpenSettings(bool firstRun = false)
     {
         if (!IsVisible) ShowFront();
-        new SettingsWindow(_hotkeys, _controller) { Owner = this }.ShowDialog();
+        new SettingsWindow(_hotkeys, _controller, firstRun) { Owner = this }.ShowDialog();
     }
 
     private void KeyboardSettings_Click(object sender, RoutedEventArgs e)

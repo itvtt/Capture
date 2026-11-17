@@ -67,9 +67,17 @@
             </Grid>
 
             <StackPanel Margin="22,18,22,20">
+                <!-- 처음 실행: 단축키를 정하라는 안내 -->
+                <Border x:Name="Intro" Margin="0,0,0,18" Padding="14,11" CornerRadius="10" Background="#1F3B82F6" BorderBrush="#663B82F6" BorderThickness="1" Visibility="Collapsed">
+                    <TextBlock FontSize="13" TextWrapping="Wrap" LineHeight="20" Foreground="#FFDCE8FF">
+                        <Run FontWeight="SemiBold" Text="쓸 단축키를 정하세요." /><LineBreak />
+                        <Run Text="처음에는 단축키가 없어 다른 프로그램과 겹치지 않습니다." /><LineBreak />
+                        <Run Text="정하지 않은 캡처는 큰 창이나 트레이 메뉴에서 시작합니다." />
+                    </TextBlock>
+                </Border>
                 <!-- 단축키 -->
                 <DockPanel Margin="0,0,0,0">
-                    <Button DockPanel.Dock="Right" Margin="0,0,2,6" Style="{StaticResource LinkButtonStyle}" FontSize="12" Click="Reset_Click" Content="기본값으로" />
+                    <Button DockPanel.Dock="Right" Margin="0,0,2,6" Style="{StaticResource LinkButtonStyle}" FontSize="12" Click="Reset_Click" Content="모두 없애기" />
                     <TextBlock Style="{StaticResource SectionTitleStyle}" Text="단축키" />
                 </DockPanel>
                 <Border Style="{StaticResource SectionStyle}">

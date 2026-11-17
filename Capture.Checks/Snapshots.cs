@@ -39,7 +39,7 @@ static class Snapshots
         Save((FrameworkElement)main.Content, Path.Combine(folder, "main.png"));
         main.ExitApp();
 
-        var keys = new SettingsWindow(hotkeys, controller) { WindowStartupLocation = WindowStartupLocation.Manual, Left = -6000, Top = 0, ShowActivated = false };
+        var keys = new SettingsWindow(hotkeys, controller, firstRun: true) { WindowStartupLocation = WindowStartupLocation.Manual, Left = -6000, Top = 0, ShowActivated = false };
         keys.Show();
         Program.Pump(TimeSpan.FromMilliseconds(300), () => false);
         Save((FrameworkElement)keys.Content, Path.Combine(folder, "settings.png"));

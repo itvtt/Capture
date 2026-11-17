@@ -20,12 +20,16 @@ static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        // 사용자의 설정(%LOCALAPPDATA%\Capture)을 건드리지 않게: 따로 정하지 않았으면 임시 폴더
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CAPTURE_DATA_DIR")))
+            Environment.SetEnvironmentVariable("CAPTURE_DATA_DIR", Path.Combine(Path.GetTempPath(), "capture-checks-data"));
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("pack://application:,,,/Capture;component/Theme.xaml") });
         if (args is ["--snapshot", var folder]) return Snapshots.Run(folder);
         if (args is ["--screen"]) return ScreenChecks.Run();
         if (args is ["--live", var output]) return ScreenChecks.Live(output);
         if (args is ["--e2e", var exe, var e2e]) return EndToEnd.Run(exe, e2e);
+        if (args is ["--first-run", var firstExe, var firstFolder]) return EndToEnd.FirstRun(firstExe, firstFolder);
         if (args is ["--hotkey-main", var mainFolder]) return EndToEnd.FromMainWindow(mainFolder);  // CAPTURE_DATA_DIR 을 따로 정해 두고
         if (args is ["--hotkey-dialog", var keyFolder]) return EndToEnd.HotkeyDialog(keyFolder);  // CAPTURE_DATA_DIR 을 따로 정해 두고
         if (args is ["--grab", var shot])
@@ -348,8 +352,14 @@ static class Program
 
     private static void HotkeySettings(string root)
     {
-        Equal("PrtSc", Hotkeys.Default(CaptureMode.Region).ToString(), "region default");
-        Equal("Ctrl+Shift+PrtSc", Hotkeys.Default(CaptureMode.Video).ToString(), "video default");
+        // 처음에는 단축키가 하나도 없음 (다른 프로그램과 겹치지 않게)
+        using (var fresh = new Hotkeys(new AppSettings()))
+        {
+            Assert(Hotkeys.Modes.All(mode => fresh.Get(mode).IsNone), "no shortcut until the user picks one");
+            fresh.Register();
+            Equal(0, fresh.Failed.Count, "nothing to register");
+        }
+        Equal("Ctrl+Shift+PrtSc", new HotkeyBinding(Capture.Core.NativeMethods.MOD_CONTROL | Capture.Core.NativeMethods.MOD_SHIFT, Capture.Core.NativeMethods.VK_SNAPSHOT).ToString(), "name with PrtSc");
         Equal("없음", default(HotkeyBinding).ToString(), "none");
         var altF = HotkeyBinding.FromKey(System.Windows.Input.Key.F, System.Windows.Input.ModifierKeys.Alt | System.Windows.Input.ModifierKeys.Control, out _);
         Equal("Ctrl+Alt+F", altF?.ToString(), "Ctrl+Alt+F");
@@ -374,7 +384,7 @@ static class Program
         using var hotkeys = new Hotkeys(read);
         Equal("Ctrl+Alt+F", hotkeys.LabelFor(CaptureMode.Gif), "saved GIF key");
         Equal("없음", hotkeys.LabelFor(CaptureMode.Video), "saved video key (none)");
-        Equal("PrtSc", hotkeys.LabelFor(CaptureMode.Region), "unsaved region key is the default");
+        Equal("없음", hotkeys.LabelFor(CaptureMode.Region), "a mode never set has no shortcut");
     }
 
     private static void EditorFlatten(string root)

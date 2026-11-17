@@ -21,7 +21,10 @@ public sealed class AppSettings
     /// <summary>처음 실행할 때 "Windows 시작할 때 실행"을 켰는지 (한 번만)</summary>
     public bool StartupConfigured { get; set; }
 
-    /// <summary>바꾼 단축키 (모드 이름 → 단축키). 없으면 기본값</summary>
+    /// <summary>처음 실행에 설정 창을 보여 단축키를 정하게 했는지 (한 번만)</summary>
+    public bool HotkeysChosen { get; set; }
+
+    /// <summary>정한 단축키 (모드 이름 → 단축키). 없으면 모두 없음</summary>
     public Dictionary<string, HotkeyBinding>? Hotkeys { get; set; }
 
     /// <summary>창을 닫으면 트레이로 간다는 안내를 보였는지</summary>

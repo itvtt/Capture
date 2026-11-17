@@ -10,6 +10,7 @@ namespace Capture;
 
 /// <summary>
 /// 설정: 단축키 · 저장 위치 · Windows 시작할 때 실행. 바꾸면 바로 적용 · 저장 (저장 단추 없음).
+/// 단축키는 처음에 하나도 없음. 처음 실행하면 이 창이 안내와 함께 열려 사용자가 정함
 /// 단축키: 모드마다 칸 하나. 칸을 누르면 키를 기다리고(그동안 이 앱의 단축키는 모두 놓음), 누른 조합으로 바꿔 바로 등록.
 /// 어떤 키든 됨 (글자 키처럼 글을 쓸 때 누르는 키는 알려 주기만). 다른 모드가 쓰던 키면 이쪽으로 옮김.
 /// 다른 프로그램이 쓰는 조합이면 알려 주고 그대로 둠
@@ -23,7 +24,7 @@ public partial class SettingsWindow : Window
     private readonly Dictionary<CaptureMode, Button> _boxes = [];
     private CaptureMode? _waiting;
 
-    public SettingsWindow(Hotkeys hotkeys, CaptureController controller)
+    public SettingsWindow(Hotkeys hotkeys, CaptureController controller, bool firstRun = false)
     {
         _hotkeys = hotkeys;
         _controller = controller;
@@ -67,6 +68,7 @@ public partial class SettingsWindow : Window
         ShowAll();
         ShowFolder();
         StartupBox.IsChecked = StartWithWindows.IsEnabled;
+        Intro.Visibility = firstRun ? Visibility.Visible : Visibility.Collapsed;
     }
 
     // ───────── 단축키 ─────────
@@ -165,11 +167,10 @@ public partial class SettingsWindow : Window
     private void Reset_Click(object sender, RoutedEventArgs e)
     {
         _waiting = null;
-        _hotkeys.ResetDefaults();
+        _hotkeys.ClearAll();
         _hotkeys.Resume();
         Message.Visibility = Visibility.Collapsed;
         ShowAll();
-        if (_hotkeys.Failed.Count > 0) Say(string.Join(", ", _hotkeys.Failed.Select(Hotkeys.Name)) + " 단축키를 다른 프로그램이 쓰고 있습니다.");
     }
 
     // ───────── 저장 위치 · 일반 ─────────
@@ -205,7 +206,16 @@ public partial class SettingsWindow : Window
     // 다른 창으로 가면 키 기다리기를 그만둠 (단축키가 계속 꺼져 있지 않게)
     private void Window_Deactivated(object? sender, EventArgs e) => StopWaiting();
 
-    private void Window_Closed(object? sender, EventArgs e) => StopWaiting();
+    private void Window_Closed(object? sender, EventArgs e)
+    {
+        StopWaiting();
+        // 한 번 보았으면 다음부터 처음 안내 없이 (정하지 않은 단축키는 없음 그대로)
+        if (!_controller.Settings.HotkeysChosen)
+        {
+            _controller.Settings.HotkeysChosen = true;
+            _controller.Settings.Save();
+        }
+    }
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }

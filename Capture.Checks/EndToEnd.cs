@@ -48,7 +48,14 @@ static class EndToEnd
         if (Directory.Exists(folder)) Directory.Delete(folder, true);
         Directory.CreateDirectory(data);
         Directory.CreateDirectory(saves);
-        File.WriteAllText(Path.Combine(data, "settings.json"), JsonSerializer.Serialize(new { SaveFolder = saves, StartupConfigured = true, TrayHintShown = true }));
+        // 단축키는 처음에 없으므로 시험에 쓸 것을 정해 둠: PrtSc 영역 · Shift+PrtSc GIF · Ctrl+Shift+PrtSc 영상
+        var shortcuts = new Dictionary<string, object>
+        {
+            ["Region"] = new { Modifiers = 0, Key = 0x2C },
+            ["Gif"] = new { Modifiers = 4, Key = 0x2C },
+            ["Video"] = new { Modifiers = 6, Key = 0x2C },
+        };
+        File.WriteAllText(Path.Combine(data, "settings.json"), JsonSerializer.Serialize(new { SaveFolder = saves, StartupConfigured = true, TrayHintShown = true, HotkeysChosen = true, Hotkeys = shortcuts }));
 
         var start = new ProcessStartInfo(exe, "--tray") { UseShellExecute = false };
         start.Environment["CAPTURE_DATA_DIR"] = data;
@@ -241,6 +248,47 @@ static class EndToEnd
         var text = new System.Text.StringBuilder(256);
         GetWindowText(GetForegroundWindow(), text, 256);
         return text.ToString();
+    }
+
+    /// <summary>처음 실행: 설정이 비어 있으면 큰 창과 설정 창(안내)이 열리고, 그냥 닫으면 단축키 없이 다시 묻지 않음</summary>
+    public static int FirstRun(string exe, string folder)
+    {
+        string data = Path.Combine(folder, "data");
+        if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        Directory.CreateDirectory(data);
+        int failures = 0;
+        void Expect(bool ok, string what)
+        {
+            Console.WriteLine((ok ? "  ok   " : "  FAIL ") + what);
+            if (!ok) failures++;
+        }
+        for (int run = 1; run <= 2; run++)
+        {
+            var start = new ProcessStartInfo(exe, "--tray") { UseShellExecute = false };
+            start.Environment["CAPTURE_DATA_DIR"] = data;
+            using var app = Process.Start(start)!;
+            try
+            {
+                Thread.Sleep(3000);
+                bool settings = FindWindow(null, "설정 - Capture") != IntPtr.Zero;
+                if (run == 1)
+                {
+                    Expect(settings && FindWindow(null, "Capture") != IntPtr.Zero, "first run opens the main window and 설정 (even with --tray)");
+                    Keys(VkEscape);  // 정하지 않고 닫기
+                    Thread.Sleep(800);
+                    string saved = File.ReadAllText(Path.Combine(data, "settings.json"));
+                    Expect(saved.Contains("\"HotkeysChosen\": true"), "closing 설정 remembers it was shown");
+                    Expect(!saved.Contains("\"Key\": 44"), "no shortcut was set");
+                }
+                else Expect(!settings, "second run does not ask again");
+            }
+            finally
+            {
+                if (!app.HasExited) app.Kill();
+                app.WaitForExit();
+            }
+        }
+        return failures == 0 ? 0 : 1;
     }
 
     private static void Keys(params ushort[] keys)

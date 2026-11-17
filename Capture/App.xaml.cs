@@ -6,7 +6,7 @@ using Forms = System.Windows.Forms;
 namespace Capture;
 
 /// <summary>
-/// Capture.exe          큰 창을 열고 트레이에 상주 (단축키 PrtSc · Ctrl+PrtSc · Shift+PrtSc · Ctrl+Shift+PrtSc)
+/// Capture.exe          큰 창을 열고 트레이에 상주 (단축키는 설정에서 정한 것만, 처음 실행하면 설정이 열림)
 /// Capture.exe --tray   트레이로만 시작 (Windows 시작할 때)
 /// 하나만 실행: 이미 실행 중이면 그 큰 창을 앞으로
 /// </summary>
@@ -61,7 +61,13 @@ public partial class App : Application
         _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, ShowSignalName);
         _showWait = ThreadPool.RegisterWaitForSingleObject(_showSignal, (_, _) => Dispatcher.BeginInvoke(() => _main.ShowFront()), null, -1, executeOnlyOnce: false);
 
-        if (!e.Args.Any(arg => string.Equals(arg, "--tray", StringComparison.OrdinalIgnoreCase))) _main.Show();
+        if (!settings.HotkeysChosen)
+        {
+            // 처음 실행: 큰 창과 설정을 열어 단축키를 정하게 함 (정하지 않으면 단축키 없음)
+            _main.Show();
+            Dispatcher.BeginInvoke(() => _main.OpenSettings(firstRun: true));
+        }
+        else if (!e.Args.Any(arg => string.Equals(arg, "--tray", StringComparison.OrdinalIgnoreCase))) _main.Show();
 
         // i-luncher AppKit: 설치된 사본이면 시작할 때 GitHub 릴리스를 확인해 스스로 업데이트 (AppKit\AppUpdater.cs)
         ILuncher.AppKit.AppUpdater.StartBackground(ready => Dispatcher.BeginInvoke(() =>
