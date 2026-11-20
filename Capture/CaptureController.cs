@@ -67,10 +67,15 @@ public sealed class CaptureController(AppSettings settings)
         {
             case CaptureMode.Region:
                 await SaveImageAsync(selection.Image!.ToBitmap());
+                ILuncher.AppKit.AppUsage.Count("capture");
                 break;
             case CaptureMode.Scroll:
                 await Task.Delay(150);  // 고르기 창이 사라진 화면으로
-                if (await ScrollAsync(selection.Rect) is { } tall) await SaveImageAsync(tall.ToBitmap());
+                if (await ScrollAsync(selection.Rect) is { } tall)
+                {
+                    await SaveImageAsync(tall.ToBitmap());
+                    ILuncher.AppKit.AppUsage.Count("scroll");
+                }
                 break;
             default:
                 await Task.Delay(150);
@@ -232,6 +237,7 @@ public sealed class CaptureController(AppSettings settings)
 
     private void ShowRecorded(string path, TimeSpan length, bool saved)
     {
+        ILuncher.AppKit.AppUsage.Count("record", length.TotalSeconds);
         bool gif = ImageFiles.IsGif(path);
         long size = new FileInfo(path).Length;
         string what = gif ? "GIF" : "영상";
@@ -285,6 +291,7 @@ public sealed class CaptureController(AppSettings settings)
         try
         {
             string link = await FileShared.ShareAsync(path);
+            ILuncher.AppKit.AppUsage.Count("share");
             Copier.Text(link);
             Toast.Notify("공유 링크를 복사했습니다", link, icon: (Geometry)Application.Current.FindResource("ShareIcon"),
                 actions: [("열기", () => OpenLink(link))]);
